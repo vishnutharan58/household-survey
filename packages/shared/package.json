@@ -1,0 +1,17 @@
+{
+  "name": "@pro-vision-care/shared",
+  "version": "1.0.0",
+  "description": "Shared types and logic",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "zod": "^3.22.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
