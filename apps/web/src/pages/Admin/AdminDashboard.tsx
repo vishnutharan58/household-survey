@@ -14,27 +14,9 @@ import {
 } from 'recharts';
 import * as XLSX from 'xlsx';
 
-// ─── Chart mock data ───────────────────────────────────────────────
-const hamletData = [
-  { name: 'Hamlet A', count: 120 },
-  { name: 'Hamlet B', count: 80 },
-  { name: 'Hamlet C', count: 150 },
-  { name: 'Hamlet D', count: 90 },
-];
-const docData = [
-  { name: 'Aadhaar', value: 400 },
-  { name: 'Ration Card', value: 300 },
-  { name: 'Fisherman ID', value: 200 },
-  { name: 'Missing Docs', value: 100 },
-];
-const COLORS = ['#1B3A5C', '#2A9D8F', '#FFB703', '#E76F51'];
+// ─── Chart Colors ────────────────────────────────────────────────
+const COLORS = ['#1B3A5C', '#2A9D8F', '#FFB703', '#E76F51', '#8b5cf6', '#3b82f6'];
 
-const statCards = [
-  { label: 'Total Households', value: '440', icon: Home, colorClass: 'blue', iconBg: 'linear-gradient(135deg,#3b82f6,#60a5fa)', trend: '+12 this week' },
-  { label: 'Total Members', value: '1,820', icon: Users, colorClass: 'green', iconBg: 'linear-gradient(135deg,#10b981,#34d399)', trend: '+48 this week' },
-  { label: 'BPL Count', value: '310', icon: AlertTriangle, colorClass: 'amber', iconBg: 'linear-gradient(135deg,#f59e0b,#fbbf24)', trend: '70.5% of total' },
-  { label: 'Active Staff', value: '12', icon: Users, colorClass: 'purple', iconBg: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', trend: '4 hamlets covered' },
-];
 
 // ─── Survey Detail Panel ────────────────────────────────────────────
 function SurveyDetailPanel({ survey, onClose }: { survey: DraftSurvey; onClose: () => void }) {
@@ -639,6 +621,42 @@ function OverviewTab({ onExport, surveys }: { onExport: () => void, surveys: Dra
     { name: 'Corrections', Required: totalCorrectionsRequired, Completed: totalCorrectionsMade },
     { name: 'New Docs', Required: totalNewDocsNeeded, Completed: totalNewDocsObtained },
   ];
+
+  // Dynamic calculations
+  const totalHouseholds = surveys.length;
+  const totalMembers = surveys.reduce((acc, s) => acc + s.members.length, 0);
+  const bplCount = surveys.filter(s => s.household.economic_status === 'BPL').length;
+  const bplPercent = totalHouseholds > 0 ? ((bplCount / totalHouseholds) * 100).toFixed(1) : 0;
+  const activeStaff = new Set(surveys.map(s => s.household.staff_name).filter(Boolean)).size;
+  const hamletsCovered = new Set(surveys.map(s => s.household.hamlet_code).filter(Boolean)).size;
+
+  const statCards = [
+    { label: 'Total Households', value: totalHouseholds.toString(), icon: Home, colorClass: 'blue', iconBg: 'linear-gradient(135deg,#3b82f6,#60a5fa)', trend: 'Overall' },
+    { label: 'Total Members', value: totalMembers.toString(), icon: Users, colorClass: 'green', iconBg: 'linear-gradient(135deg,#10b981,#34d399)', trend: 'Overall' },
+    { label: 'BPL Count', value: bplCount.toString(), icon: AlertTriangle, colorClass: 'amber', iconBg: 'linear-gradient(135deg,#f59e0b,#fbbf24)', trend: `${bplPercent}% of total` },
+    { label: 'Active Staff', value: activeStaff.toString(), icon: Users, colorClass: 'purple', iconBg: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', trend: `${hamletsCovered} hamlets covered` },
+  ];
+
+  const hamlets = surveys.reduce((acc, s) => {
+    const h = s.household.hamlet_code || 'Unknown';
+    acc[h] = (acc[h] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const hamletData = Object.entries(hamlets).map(([name, count]) => ({ name, count }));
+  if (hamletData.length === 0) hamletData.push({ name: 'No Data', count: 0 });
+
+  const docCounts: Record<string, number> = {};
+  surveys.forEach(s => {
+    Object.values(s.documents || {}).forEach(memberDocs => {
+      Object.entries(memberDocs || {}).forEach(([docId, hasDoc]) => {
+        if (hasDoc) {
+          docCounts[docId] = (docCounts[docId] || 0) + 1;
+        }
+      });
+    });
+  });
+  const docData = Object.entries(docCounts).map(([name, value]) => ({ name: name.replace(/_/g, ' '), value }));
+  if (docData.length === 0) docData.push({ name: 'No Data', value: 1 });
 
   return (
     <div className="animate-fade-in">
