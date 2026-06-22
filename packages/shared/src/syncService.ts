@@ -100,25 +100,30 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
 
 export async function fetchAdminSurveys(): Promise<DraftSurvey[]> {
   const supabase = getSupabase() as any;
-  const { data: households, error: hhErr } = await supabase.from('households').select('*').limit(10000);
+  const [
+    { data: households, error: hhErr },
+    { data: members, error: memErr },
+    { data: documents, error: docErr },
+    { data: corrections_required, error: corErr },
+    { data: new_docs, error: newErr },
+    { data: base_docs, error: baseErr },
+    { data: schemes, error: schErr }
+  ] = await Promise.all([
+    supabase.from('households').select('*').limit(10000),
+    supabase.from('members').select('*').limit(50000),
+    supabase.from('documents').select('*').limit(50000),
+    supabase.from('corrections_required').select('*').limit(50000),
+    supabase.from('new_documents_needed').select('*').limit(50000),
+    supabase.from('base_documents_available').select('*').limit(50000),
+    supabase.from('schemes_accessed').select('*').limit(50000)
+  ]);
+
   if (hhErr) throw hhErr;
-  
-  const { data: members, error: memErr } = await supabase.from('members').select('*').limit(50000);
   if (memErr) throw memErr;
-  
-  const { data: documents, error: docErr } = await supabase.from('documents').select('*').limit(50000);
   if (docErr) throw docErr;
-  
-  const { data: corrections_required, error: corErr } = await supabase.from('corrections_required').select('*').limit(50000);
   if (corErr) throw corErr;
-
-  const { data: new_docs, error: newErr } = await supabase.from('new_documents_needed').select('*').limit(50000);
   if (newErr) throw newErr;
-
-  const { data: base_docs, error: baseErr } = await supabase.from('base_documents_available').select('*').limit(50000);
   if (baseErr) throw baseErr;
-
-  const { data: schemes, error: schErr } = await supabase.from('schemes_accessed').select('*').limit(50000);
   if (schErr) throw schErr;
 
   // Reconstruct DraftSurveys
