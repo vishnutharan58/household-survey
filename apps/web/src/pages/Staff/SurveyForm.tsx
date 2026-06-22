@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuthStore, useDraftStore, useEditRequestStore } from '@pro-vision-care/shared';
 import type { DraftSurvey } from '@pro-vision-care/shared';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, Send, Eye, Pencil, Lock, AlertCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid'; // we need to install uuid if not already
 
@@ -117,11 +117,12 @@ const CORRECTION_TYPES = [
 export default function SurveyForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, hamlet_code, role } = useAuthStore();
   const { drafts, saveDraft, markAsPendingSync: _markAsPendingSync } = useDraftStore();
   const { requests, clearRequest } = useEditRequestStore();
 
-  const existingDraft = id ? drafts[id] : null;
+  const existingDraft = location.state?.survey || (id ? drafts[id] : null);
   const isReviewMode = existingDraft?.status === 'synced';
   const [isEditing, setIsEditing] = useState(false);
 
@@ -134,6 +135,9 @@ export default function SurveyForm() {
 
   // Load existing draft or create new
   const [draft, setDraft] = useState<DraftSurvey>(() => {
+    if (location.state?.survey) {
+      return location.state.survey;
+    }
     if (id && drafts[id]) {
       return drafts[id];
     }
@@ -271,7 +275,7 @@ export default function SurveyForm() {
     <div className="min-h-screen bg-gray-50 pb-20">
       <nav className="bg-white border-b sticky top-0 z-10 px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/staff')} className="p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors">
+          <button onClick={() => navigate(isAdmin ? '/admin' : '/staff')} className="p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors">
             <ArrowLeft size={20} />
           </button>
           <div>

@@ -108,7 +108,7 @@ function SurveyDetailPanel({ survey, onClose }: { survey: DraftSurvey; onClose: 
 
           {/* Admin edit button */}
           <button
-            onClick={() => { onClose(); navigate(`/staff/survey/${survey.id}`); }}
+            onClick={() => { onClose(); navigate(`/staff/survey/${survey.id}`, { state: { survey } }); }}
             style={{
               marginTop: '14px', display: 'flex', alignItems: 'center', gap: '6px',
               padding: '8px 16px', borderRadius: '8px', border: 'none',
