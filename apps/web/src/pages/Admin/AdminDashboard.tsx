@@ -351,12 +351,11 @@ function EditRequestsTab() {
 }
 
 // ─── Submitted Surveys Tab ──────────────────────────────────────────
-function SubmittedSurveysTab() {
-  const { drafts } = useDraftStore();
+function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
   const [search, setSearch] = useState('');
   const [selectedSurvey, setSelectedSurvey] = useState<DraftSurvey | null>(null);
 
-  const submitted = Object.values(drafts).filter(d => d.status === 'synced');
+  const submitted = surveys;
 
   const filtered = submitted.filter(s => {
     const q = search.toLowerCase();
@@ -869,8 +868,8 @@ export default function AdminDashboard() {
 
       {/* Main content */}
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview'  && <OverviewTab onExport={exportData} surveys={submittedSurveys} />}
-        {activeTab === 'surveys'   && <SubmittedSurveysTab />}
+        {activeTab === 'overview'  && <OverviewTab surveys={submittedSurveys} onExport={exportData} />}
+        {activeTab === 'surveys'   && <SubmittedSurveysTab surveys={submittedSurveys} />}
         {activeTab === 'requests'  && <EditRequestsTab />}
       </main>
     </div>
