@@ -1,6 +1,6 @@
 // Removed unused React import
-import { useState } from 'react';
-import { useAuthStore, useDraftStore, useEditRequestStore, syncDraftToSupabase } from '@pro-vision-care/shared';
+import { useState, useEffect } from 'react';
+import { useAuthStore, useDraftStore, useEditRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, PlusCircle, FileText, UploadCloud, MapPin, CheckCircle2, Clock, Pencil, Send, CheckCheck, XCircle, AlertCircle, ChevronDown } from 'lucide-react';
 
@@ -21,6 +21,93 @@ export default function StaffDashboard() {
   const navigate = useNavigate();
   const [hamletOpen, setHamletOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncedSurveys, setSyncedSurveys] = useState<any[]>([]);
+  const [loadingSynced, setLoadingSynced] = useState(false);
+
+  const staffHamlets = user?.email ? (STAFF_HAMLET_MAP[user.email] ?? []) : [];
+
+  // Auto-initialize hamlet_code if it is not in the user's assigned hamlets list (e.g. placeholder 'HAM-001')
+  useEffect(() => {
+    const autoInitializeHamlet = async () => {
+      if (!user?.email || staffHamlets.length === 0) return;
+      if (!hamlet_code || !staffHamlets.includes(hamlet_code)) {
+        const defaultHamlet = staffHamlets[0];
+        setHamletCode(defaultHamlet);
+        try {
+          const supabase = getSupabase();
+          const { error: updateErr } = await supabase.auth.updateUser({ data: { hamlet_code: defaultHamlet } });
+          if (updateErr) throw updateErr;
+
+          const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
+          if (refreshErr) throw refreshErr;
+
+          if (refreshData.session) {
+            useAuthStore.getState().setAuth(refreshData.session);
+          }
+        } catch (err) {
+          console.error('Failed to auto-initialize hamlet code:', err);
+        }
+      }
+    };
+
+    autoInitializeHamlet();
+  }, [user?.email, hamlet_code, staffHamlets, setHamletCode]);
+
+  useEffect(() => {
+    const loadSyncedSurveys = async () => {
+      if (!user?.email || !hamlet_code) return;
+      setLoadingSynced(true);
+      try {
+        const supabase = getSupabase();
+        
+        const staffPrefix = user.email.split('@')[0];
+        const staffNameCapitalized = staffPrefix.charAt(0).toUpperCase() + staffPrefix.slice(1);
+
+        const { data, error } = await supabase
+          .from('households')
+          .select('id, household_number, hamlet_code, staff_name, date, created_at')
+          .eq('hamlet_code', hamlet_code)
+          .or(`staff_name.eq."${user.email}",staff_name.eq."${staffNameCapitalized}",staff_name.eq."${staffPrefix}"`);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const hhIds = data.map((h: any) => h.id);
+          const { data: members, error: memErr } = await supabase
+            .from('members')
+            .select('household_id')
+            .in('household_id', hhIds);
+            
+          if (memErr) throw memErr;
+          
+          const countsMap: Record<string, number> = {};
+          members.forEach((m: any) => {
+            if (m.household_id) {
+              countsMap[m.household_id] = (countsMap[m.household_id] || 0) + 1;
+            }
+          });
+          
+          const surveys = data.map((h: any) => ({
+            id: h.id,
+            household: h,
+            members: Array.from({ length: countsMap[h.id] || 0 }, () => ({})),
+            lastSavedAt: h.created_at,
+            status: 'synced' as const
+          }));
+          
+          setSyncedSurveys(surveys);
+        } else {
+          setSyncedSurveys([]);
+        }
+      } catch (err) {
+        console.error('Failed to load synced surveys:', err);
+      } finally {
+        setLoadingSynced(false);
+      }
+    };
+
+    loadSyncedSurveys();
+  }, [user?.email, hamlet_code]);
 
   const handleSyncAll = async () => {
     setIsSyncing(true);
@@ -38,7 +125,7 @@ export default function StaffDashboard() {
     }
   };
 
-  const staffHamlets = user?.email ? (STAFF_HAMLET_MAP[user.email] ?? []) : [];
+
 
   const handleSignOut = () => {
     signOut();
@@ -47,7 +134,30 @@ export default function StaffDashboard() {
 
   const staffDrafts = Object.values(drafts).filter(d => d.household.staff_name === user?.email);
   const pendingDrafts = staffDrafts.filter(d => d.status === 'draft' || d.status === 'pending_sync');
-  const syncedDrafts = staffDrafts.filter(d => d.status === 'synced');
+  const localSyncedDrafts = staffDrafts.filter(d => d.status === 'synced');
+
+  // Merge local synced drafts and fetched database surveys, deduplicating by ID
+  const allSyncedMap = new Map<string, any>();
+  syncedSurveys.forEach(s => allSyncedMap.set(s.id, s));
+  localSyncedDrafts.forEach(d => allSyncedMap.set(d.id, d));
+  
+  const syncedDrafts = Array.from(allSyncedMap.values()).sort(
+    (a, b) => new Date(b.lastSavedAt).getTime() - new Date(a.lastSavedAt).getTime()
+  );
+
+  const handleOpenSurvey = async (survey: any) => {
+    if (survey.status !== 'synced') {
+      navigate(`/staff/survey/${survey.id}`);
+      return;
+    }
+    try {
+      const fullDetail = await fetchSurveyDetail(survey.id);
+      navigate(`/staff/survey/${survey.id}`, { state: { survey: fullDetail } });
+    } catch (err) {
+      console.error('Failed to load survey details:', err);
+      navigate(`/staff/survey/${survey.id}`);
+    }
+  };
 
   const handleRequestEdit = (draft: typeof syncedDrafts[0], e: React.MouseEvent) => {
     e.stopPropagation();
@@ -176,7 +286,25 @@ export default function StaffDashboard() {
                     {staffHamlets.map(code => (
                       <button
                         key={code}
-                        onClick={() => { setHamletCode(code); setHamletOpen(false); }}
+                        onClick={async () => {
+                          setHamletCode(code);
+                          setHamletOpen(false);
+                          try {
+                            const supabase = getSupabase();
+                            const { error: updateErr } = await supabase.auth.updateUser({ data: { hamlet_code: code } });
+                            if (updateErr) throw updateErr;
+
+                            // Refresh session to obtain a new JWT token containing the updated hamlet_code claim
+                            const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
+                            if (refreshErr) throw refreshErr;
+
+                            if (refreshData.session) {
+                              useAuthStore.getState().setAuth(refreshData.session);
+                            }
+                          } catch (err) {
+                            console.error('Failed to update hamlet on server:', err);
+                          }
+                        }}
                         style={{
                           padding: '6px 14px',
                           borderRadius: '999px',
@@ -320,8 +448,9 @@ export default function StaffDashboard() {
                 >
                   {syncedDrafts.length}
                 </span>
+                {loadingSynced && <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '8px', fontWeight: 400 }}>Loading...</span>}
               </h2>
-              {syncedDrafts.length > 0 && (
+              {localSyncedDrafts.length > 0 && (
                 <button
                   id="staff-clear-synced"
                   onClick={clearSynced}
@@ -329,7 +458,7 @@ export default function StaffDashboard() {
                   onMouseOver={e => (e.currentTarget.style.background = '#fef2f2')}
                   onMouseOut={e => (e.currentTarget.style.background = 'none')}
                 >
-                  Clear
+                  Clear Local
                 </button>
               )}
             </div>
@@ -349,7 +478,7 @@ export default function StaffDashboard() {
                     <li
                       key={draft.id}
                       className="draft-item"
-                      onClick={() => navigate(`/staff/survey/${draft.id}`)}
+                      onClick={() => handleOpenSurvey(draft)}
                       style={{ border: '1.5px solid #d1fae5', background: '#f0fdf9', flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}
                       onMouseOver={e => { (e.currentTarget as HTMLLIElement).style.borderColor = '#2A9D8F'; (e.currentTarget as HTMLLIElement).style.background = '#e0faf6'; }}
                       onMouseOut={e => { (e.currentTarget as HTMLLIElement).style.borderColor = '#d1fae5'; (e.currentTarget as HTMLLIElement).style.background = '#f0fdf9'; }}
@@ -399,7 +528,7 @@ export default function StaffDashboard() {
                         <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
                           {/* View button always available */}
                           <button
-                            onClick={() => navigate(`/staff/survey/${draft.id}`)}
+                            onClick={() => handleOpenSurvey(draft)}
                             style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#2A9D8F', fontWeight: 600, background: 'rgba(42,157,143,0.1)', padding: '4px 10px', borderRadius: '999px', border: 'none', cursor: 'pointer' }}
                           >
                             <Pencil size={11} /> View
@@ -418,7 +547,7 @@ export default function StaffDashboard() {
                           {/* Edit — only when approved */}
                           {reqStatus === 'approved' && (
                             <button
-                              onClick={() => navigate(`/staff/survey/${draft.id}`)}
+                              onClick={() => handleOpenSurvey(draft)}
                               style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'white', fontWeight: 700, background: 'linear-gradient(135deg,#2A9D8F,#1B3A5C)', padding: '4px 12px', borderRadius: '999px', border: 'none', cursor: 'pointer', boxShadow: '0 2px 8px rgba(42,157,143,0.35)' }}
                             >
                               <Pencil size={11} /> Edit Survey
