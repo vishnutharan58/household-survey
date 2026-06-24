@@ -107,31 +107,18 @@ export async function fetchDashboardStats(): Promise<any> {
 
 export async function fetchSurveyDetail(householdId: string): Promise<DraftSurvey> {
   const supabase = getSupabase() as any;
+
+  // Fetch household and members first
   const [
     { data: hh, error: hhErr },
-    { data: members, error: memErr },
-    { data: documents, error: docErr },
-    { data: corrections_required, error: corErr },
-    { data: new_docs, error: newErr },
-    { data: base_docs, error: baseErr },
-    { data: schemes, error: schErr }
+    { data: members, error: memErr }
   ] = await Promise.all([
     supabase.from('households').select('*').eq('id', householdId).single(),
-    supabase.from('members').select('*').eq('household_id', householdId),
-    supabase.from('documents').select('*').in('member_id', supabase.from('members').select('id').eq('household_id', householdId)),
-    supabase.from('corrections_required').select('*').in('member_id', supabase.from('members').select('id').eq('household_id', householdId)),
-    supabase.from('new_documents_needed').select('*').in('member_id', supabase.from('members').select('id').eq('household_id', householdId)),
-    supabase.from('base_documents_available').select('*').in('member_id', supabase.from('members').select('id').eq('household_id', householdId)),
-    supabase.from('schemes_accessed').select('*').in('member_id', supabase.from('members').select('id').eq('household_id', householdId))
+    supabase.from('members').select('*').eq('household_id', householdId)
   ]);
 
   if (hhErr) throw hhErr;
   if (memErr) throw memErr;
-  if (docErr) throw docErr;
-  if (corErr) throw corErr;
-  if (newErr) throw newErr;
-  if (baseErr) throw baseErr;
-  if (schErr) throw schErr;
 
   const docsRecord: any = {};
   const corrRecord: any = {};
@@ -139,18 +126,43 @@ export async function fetchSurveyDetail(householdId: string): Promise<DraftSurve
   const baseDocsRecord: any = {};
   const schemesRecord: any = {};
 
-  members.forEach((m: any) => {
-    docsRecord[m.id] = documents.find((d: any) => d.member_id === m.id) || {};
-    corrRecord[m.id] = corrections_required.find((c: any) => c.member_id === m.id)?.corrections || {};
-    newDocsRecord[m.id] = new_docs.find((nd: any) => nd.member_id === m.id) || {};
-    baseDocsRecord[m.id] = base_docs.find((bd: any) => bd.member_id === m.id) || {};
-    schemesRecord[m.id] = schemes.find((s: any) => s.member_id === m.id) || {};
-  });
+  if (members && members.length > 0) {
+    const memberIds = members.map((m: any) => m.id);
+
+    // Fetch child table data using the resolved member IDs
+    const [
+      { data: documents, error: docErr },
+      { data: corrections_required, error: corErr },
+      { data: new_docs, error: newErr },
+      { data: base_docs, error: baseErr },
+      { data: schemes, error: schErr }
+    ] = await Promise.all([
+      supabase.from('documents').select('*').in('member_id', memberIds),
+      supabase.from('corrections_required').select('*').in('member_id', memberIds),
+      supabase.from('new_documents_needed').select('*').in('member_id', memberIds),
+      supabase.from('base_documents_available').select('*').in('member_id', memberIds),
+      supabase.from('schemes_accessed').select('*').in('member_id', memberIds)
+    ]);
+
+    if (docErr) throw docErr;
+    if (corErr) throw corErr;
+    if (newErr) throw newErr;
+    if (baseErr) throw baseErr;
+    if (schErr) throw schErr;
+
+    members.forEach((m: any) => {
+      docsRecord[m.id] = documents.find((d: any) => d.member_id === m.id) || {};
+      corrRecord[m.id] = corrections_required.find((c: any) => c.member_id === m.id)?.corrections || {};
+      newDocsRecord[m.id] = new_docs.find((nd: any) => nd.member_id === m.id) || {};
+      baseDocsRecord[m.id] = base_docs.find((bd: any) => bd.member_id === m.id) || {};
+      schemesRecord[m.id] = schemes.find((s: any) => s.member_id === m.id) || {};
+    });
+  }
 
   return {
     id: hh.id,
     household: hh,
-    members,
+    members: members || [],
     documents: docsRecord,
     corrections: corrRecord,
     corrections_made: {},
@@ -165,17 +177,25 @@ export async function fetchSurveyDetail(householdId: string): Promise<DraftSurve
 export async function fetchAdminSurveys(): Promise<DraftSurvey[]> {
   const supabase = getSupabase() as any;
 
-  // Only select households and count of their members to keep network payload minimal
-  const { data: households, error: hhErr } = await supabase
-    .from('households')
-    .select('*, members(count)')
-    .limit(10000);
+  // Fetch households and member counts separately to avoid statement timeout
+  const [{ data: households, error: hhErr }, { data: members, error: memErr }] = await Promise.all([
+    supabase.from('households').select('*').limit(10000),
+    supabase.from('members').select('household_id').limit(100000)
+  ]);
 
   if (hhErr) throw hhErr;
+  if (memErr) throw memErr;
+
+  // Count members per household in memory
+  const countsMap: Record<string, number> = {};
+  for (const m of members) {
+    if (m.household_id) {
+      countsMap[m.household_id] = (countsMap[m.household_id] || 0) + 1;
+    }
+  }
 
   return households.map((hh: any) => {
-    const memberCount = hh.members?.[0]?.count || 0;
-    // Mock the members array length to maintain compatibility with survey.members.length check
+    const memberCount = countsMap[hh.id] || 0;
     const mockMembers = Array.from({ length: memberCount }, () => ({}));
 
     return {
