@@ -41,22 +41,20 @@ export default function Login() {
 
   const texts = {
     en: {
-      title: 'PRO-VISION CARE',
-      subtitle: 'Survey Manager',
+      subtitle: 'Community Organizer',
       email: 'Email Address',
       password: 'Password',
       login: 'Sign In',
       loading: 'Signing in...',
-      hint: 'Coastal Community Survey Platform',
+      hint: 'Coastal Community Access to Rights and Entitlement',
     },
     ta: {
-      title: 'ப்ரோ-விஷன் கேர்',
-      subtitle: 'கணக்கெடுப்பு மேலாளர்',
+      subtitle: 'சமூக அமைப்பாளர்',
       email: 'மின்னஞ்சல்',
       password: 'கடவுச்சொல்',
       login: 'உள்நுழைய',
       loading: 'உள்நுழைகிறது...',
-      hint: 'கடலோர சமூக கணக்கெடுப்பு',
+      hint: 'கடலோர சமூக உரிமைகள் மற்றும் வாழ்வுரிமைக்கான அணுகல்',
     }
   };
 
@@ -86,14 +84,13 @@ export default function Login() {
             <div style={{ position: 'absolute', inset: '-6px', borderRadius: '9999px', background: 'linear-gradient(135deg, #2A9D8F, #1B3A5C)', opacity: 0.25, filter: 'blur(8px)' }} />
             <img
               src="/logo.jpeg"
-              alt="PRO-VISION CARE Logo"
+              alt="Coastal Community Access to Rights and Entitlement Logo"
               className="logo-glow relative"
               style={{ height: '88px', width: 'auto', objectFit: 'contain', borderRadius: '9999px', border: '3px solid rgba(42,157,143,0.3)', background: 'white', padding: '4px' }}
             />
           </div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1B3A5C', letterSpacing: '-0.02em', margin: 0, lineHeight: 1.1 }}>{t.title}</h1>
-          <p style={{ fontSize: '0.95rem', fontWeight: 500, color: '#2A9D8F', margin: '4px 0 0', letterSpacing: '0.04em', textTransform: 'uppercase' }}>{t.subtitle}</p>
-          <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '6px' }}>{t.hint}</p>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1B3A5C', letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0, lineHeight: 1.2, textAlign: 'center' }}>{t.subtitle}</h1>
+          <p style={{ fontSize: '0.85rem', fontWeight: 500, color: '#2A9D8F', margin: '6px 0 0', letterSpacing: '-0.01em', textAlign: 'center', lineHeight: 1.3 }}>{t.hint}</p>
         </div>
 
         {/* Form */}

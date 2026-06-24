@@ -222,3 +222,113 @@ FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
 CREATE TRIGGER update_members_modtime
 BEFORE UPDATE ON members
 FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
+-- Function to aggregate dashboard metrics directly on the database server for high performance
+CREATE OR REPLACE FUNCTION public.get_dashboard_stats()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  result JSONB;
+  total_hh INT;
+  total_mem INT;
+  bpl_cnt INT;
+  staff_cnt INT;
+  hamlet_cnt INT;
+  hamlet_data JSONB;
+  doc_data JSONB;
+  corr_req_cnt INT;
+  new_docs_cnt INT;
+BEGIN
+  -- Basic counts
+  SELECT count(*) INTO total_hh FROM public.households;
+  SELECT count(*) INTO total_mem FROM public.members;
+  SELECT count(*) FROM public.households WHERE economic_status = 'BPL' INTO bpl_cnt;
+  SELECT count(DISTINCT staff_name) FROM public.households WHERE staff_name IS NOT NULL AND staff_name <> '' INTO staff_cnt;
+  SELECT count(DISTINCT hamlet_code) FROM public.households WHERE hamlet_code IS NOT NULL AND hamlet_code <> '' INTO hamlet_cnt;
+
+  -- Hamlet-wise households
+  SELECT jsonb_agg(jsonb_build_object('name', hamlet_code, 'count', cnt))
+  INTO hamlet_data
+  FROM (
+    SELECT COALESCE(hamlet_code, 'Unknown') as hamlet_code, count(*) as cnt
+    FROM public.households
+    GROUP BY hamlet_code
+  ) h;
+
+  -- Document availability counts
+  SELECT jsonb_build_array(
+    jsonb_build_object('name', 'aadhaar_card', 'value', count(1) FILTER (WHERE aadhaar_card)),
+    jsonb_build_object('name', 'ration_card', 'value', count(1) FILTER (WHERE ration_card)),
+    jsonb_build_object('name', 'e_epic', 'value', count(1) FILTER (WHERE e_epic)),
+    jsonb_build_object('name', 'pan_card', 'value', count(1) FILTER (WHERE pan_card)),
+    jsonb_build_object('name', 'bank_account', 'value', count(1) FILTER (WHERE bank_account)),
+    jsonb_build_object('name', 'income_certificate', 'value', count(1) FILTER (WHERE income_certificate)),
+    jsonb_build_object('name', 'community_certificate', 'value', count(1) FILTER (WHERE community_certificate)),
+    jsonb_build_object('name', 'birth_certificate', 'value', count(1) FILTER (WHERE birth_certificate)),
+    jsonb_build_object('name', 'death_certificate', 'value', count(1) FILTER (WHERE death_certificate)),
+    jsonb_build_object('name', 'widow_certificate', 'value', count(1) FILTER (WHERE widow_certificate)),
+    jsonb_build_object('name', 'udid', 'value', count(1) FILTER (WHERE udid)),
+    jsonb_build_object('name', 'society_card', 'value', count(1) FILTER (WHERE society_card)),
+    jsonb_build_object('name', 'fisherman_id_card', 'value', count(1) FILTER (WHERE fisherman_id_card)),
+    jsonb_build_object('name', 'fisherman_welfare_card', 'value', count(1) FILTER (WHERE fisherman_welfare_card)),
+    jsonb_build_object('name', 'vb_g_ram_g_act', 'value', count(1) FILTER (WHERE vb_g_ram_g_act)),
+    jsonb_build_object('name', 'cmchis', 'value', count(1) FILTER (WHERE cmchis)),
+    jsonb_build_object('name', 'legal_heir', 'value', count(1) FILTER (WHERE legal_heir))
+  ) INTO doc_data
+  FROM public.documents;
+
+  -- Corrections required (sum of all true values in JSONB objects)
+  SELECT COALESCE(sum(corr_cnt), 0) INTO corr_req_cnt
+  FROM (
+    SELECT (
+      SELECT count(1)
+      FROM jsonb_each(corrections) AS c(doc_key, sub_val)
+      CROSS JOIN LATERAL jsonb_each(sub_val) AS s(sub_key, val)
+      WHERE val::jsonb = 'true'::jsonb
+    ) as corr_cnt
+    FROM public.corrections_required
+  ) c_sums;
+
+  -- New documents needed (count of true columns across all records)
+  SELECT COALESCE(
+    sum(
+      CASE WHEN e_epic THEN 1 ELSE 0 END +
+      CASE WHEN pan_card THEN 1 ELSE 0 END +
+      CASE WHEN bank_account THEN 1 ELSE 0 END +
+      CASE WHEN income_certificate THEN 1 ELSE 0 END +
+      CASE WHEN community_certificate THEN 1 ELSE 0 END +
+      CASE WHEN birth_certificate THEN 1 ELSE 0 END +
+      CASE WHEN death_certificate THEN 1 ELSE 0 END +
+      CASE WHEN widow_certificate THEN 1 ELSE 0 END +
+      CASE WHEN udid THEN 1 ELSE 0 END +
+      CASE WHEN society_card THEN 1 ELSE 0 END +
+      CASE WHEN fisherman_id_card THEN 1 ELSE 0 END +
+      CASE WHEN fisherman_welfare_card THEN 1 ELSE 0 END +
+      CASE WHEN vb_g_ram_g_act THEN 1 ELSE 0 END +
+      CASE WHEN cmchis THEN 1 ELSE 0 END +
+      CASE WHEN land_rights THEN 1 ELSE 0 END
+    ),
+    0
+  ) INTO new_docs_cnt
+  FROM public.new_documents_needed;
+
+  result := jsonb_build_object(
+    'total_households', total_hh,
+    'total_members', total_mem,
+    'bpl_count', bpl_cnt,
+    'active_staff_count', staff_cnt,
+    'hamlets_covered_count', hamlet_cnt,
+    'hamlet_counts', COALESCE(hamlet_data, '[]'::jsonb),
+    'document_counts', COALESCE(doc_data, '[]'::jsonb),
+    'total_corrections_required', corr_req_cnt,
+    'total_corrections_made', 0,
+    'total_new_docs_needed', new_docs_cnt,
+    'total_new_docs_obtained', 0
+  );
+
+  RETURN result;
+END;
+$$;
+

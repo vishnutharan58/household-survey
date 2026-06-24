@@ -12,5 +12,10 @@
   "devDependencies": {
     "turbo": "latest"
   },
-  "packageManager": "npm@11.13.0"
+  "packageManager": "npm@11.13.0",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
+    "dotenv": "^17.4.2",
+    "xlsx": "^0.18.5"
+  }
 }

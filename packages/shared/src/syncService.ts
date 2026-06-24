@@ -98,10 +98,17 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
   return householdId;
 }
 
-export async function fetchAdminSurveys(): Promise<DraftSurvey[]> {
+export async function fetchDashboardStats(): Promise<any> {
+  const supabase = getSupabase() as any;
+  const { data, error } = await supabase.rpc('get_dashboard_stats');
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchSurveyDetail(householdId: string): Promise<DraftSurvey> {
   const supabase = getSupabase() as any;
   const [
-    { data: households, error: hhErr },
+    { data: hh, error: hhErr },
     { data: members, error: memErr },
     { data: documents, error: docErr },
     { data: corrections_required, error: corErr },
@@ -109,13 +116,13 @@ export async function fetchAdminSurveys(): Promise<DraftSurvey[]> {
     { data: base_docs, error: baseErr },
     { data: schemes, error: schErr }
   ] = await Promise.all([
-    supabase.from('households').select('*').limit(10000),
-    supabase.from('members').select('*').limit(50000),
-    supabase.from('documents').select('*').limit(50000),
-    supabase.from('corrections_required').select('*').limit(50000),
-    supabase.from('new_documents_needed').select('*').limit(50000),
-    supabase.from('base_documents_available').select('*').limit(50000),
-    supabase.from('schemes_accessed').select('*').limit(50000)
+    supabase.from('households').select('*').eq('id', householdId).single(),
+    supabase.from('members').select('*').eq('household_id', householdId),
+    supabase.from('documents').select('*').in('member_id', supabase.from('members').select('id').eq('household_id', householdId)),
+    supabase.from('corrections_required').select('*').in('member_id', supabase.from('members').select('id').eq('household_id', householdId)),
+    supabase.from('new_documents_needed').select('*').in('member_id', supabase.from('members').select('id').eq('household_id', householdId)),
+    supabase.from('base_documents_available').select('*').in('member_id', supabase.from('members').select('id').eq('household_id', householdId)),
+    supabase.from('schemes_accessed').select('*').in('member_id', supabase.from('members').select('id').eq('household_id', householdId))
   ]);
 
   if (hhErr) throw hhErr;
@@ -126,35 +133,64 @@ export async function fetchAdminSurveys(): Promise<DraftSurvey[]> {
   if (baseErr) throw baseErr;
   if (schErr) throw schErr;
 
-  // Reconstruct DraftSurveys
-  return households.map((hh: any) => {
-    const hhMembers = members.filter((m: any) => m.household_id === hh.id);
-    const docsRecord: any = {};
-    const corrRecord: any = {};
-    const newDocsRecord: any = {};
-    const baseDocsRecord: any = {};
-    const schemesRecord: any = {};
+  const docsRecord: any = {};
+  const corrRecord: any = {};
+  const newDocsRecord: any = {};
+  const baseDocsRecord: any = {};
+  const schemesRecord: any = {};
 
-    hhMembers.forEach((m: any) => {
-      docsRecord[m.id] = documents.find((d: any) => d.member_id === m.id) || {};
-      corrRecord[m.id] = corrections_required.find((c: any) => c.member_id === m.id)?.corrections || {};
-      newDocsRecord[m.id] = new_docs.find((nd: any) => nd.member_id === m.id) || {};
-      baseDocsRecord[m.id] = base_docs.find((bd: any) => bd.member_id === m.id) || {};
-      schemesRecord[m.id] = schemes.find((s: any) => s.member_id === m.id) || {};
-    });
+  members.forEach((m: any) => {
+    docsRecord[m.id] = documents.find((d: any) => d.member_id === m.id) || {};
+    corrRecord[m.id] = corrections_required.find((c: any) => c.member_id === m.id)?.corrections || {};
+    newDocsRecord[m.id] = new_docs.find((nd: any) => nd.member_id === m.id) || {};
+    baseDocsRecord[m.id] = base_docs.find((bd: any) => bd.member_id === m.id) || {};
+    schemesRecord[m.id] = schemes.find((s: any) => s.member_id === m.id) || {};
+  });
+
+  return {
+    id: hh.id,
+    household: hh,
+    members,
+    documents: docsRecord,
+    corrections: corrRecord,
+    corrections_made: {},
+    new_docs: newDocsRecord,
+    base_docs: baseDocsRecord,
+    schemes: schemesRecord,
+    lastSavedAt: hh.created_at,
+    status: 'synced'
+  } as DraftSurvey;
+}
+
+export async function fetchAdminSurveys(): Promise<DraftSurvey[]> {
+  const supabase = getSupabase() as any;
+
+  // Only select households and count of their members to keep network payload minimal
+  const { data: households, error: hhErr } = await supabase
+    .from('households')
+    .select('*, members(count)')
+    .limit(10000);
+
+  if (hhErr) throw hhErr;
+
+  return households.map((hh: any) => {
+    const memberCount = hh.members?.[0]?.count || 0;
+    // Mock the members array length to maintain compatibility with survey.members.length check
+    const mockMembers = Array.from({ length: memberCount }, () => ({}));
 
     return {
       id: hh.id,
       household: hh,
-      members: hhMembers,
-      documents: docsRecord,
-      corrections: corrRecord,
-      corrections_made: {}, 
-      new_docs: newDocsRecord,
-      base_docs: baseDocsRecord,
-      schemes: schemesRecord,
+      members: mockMembers,
+      documents: {},
+      corrections: {},
+      corrections_made: {},
+      new_docs: {},
+      base_docs: {},
+      schemes: {},
       lastSavedAt: hh.created_at,
       status: 'synced'
     } as DraftSurvey;
   });
 }
+

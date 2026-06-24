@@ -685,6 +685,8 @@ export default function SurveyForm() {
                           <option value="">Select...</option>
                           <option value="Head of Family">Head of Family</option>
                           <option value="Spouse">Spouse</option>
+                          <option value="Husband">Husband</option>
+                          <option value="Wife">Wife</option>
                           <option value="Son">Son</option>
                           <option value="Daughter">Daughter</option>
                           <option value="Father">Father</option>

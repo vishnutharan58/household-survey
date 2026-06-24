@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuthStore, useDraftStore, useEditRequestStore, fetchAdminSurveys } from '@pro-vision-care/shared';
+import { useAuthStore, useDraftStore, useEditRequestStore, fetchAdminSurveys, fetchDashboardStats, fetchSurveyDetail } from '@pro-vision-care/shared';
 import type { DraftSurvey } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -221,6 +221,20 @@ function EditRequestsTab() {
   const { drafts } = useDraftStore();
   const navigate = useNavigate();
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
+  const [loadingEdit, setLoadingEdit] = useState(false);
+
+  const handleEditSurvey = async (surveyId: string) => {
+    setLoadingEdit(true);
+    try {
+      const fullDetail = await fetchSurveyDetail(surveyId);
+      navigate(`/staff/survey/${surveyId}`, { state: { survey: fullDetail } });
+    } catch (err) {
+      console.error("Failed to load survey for editing:", err);
+      alert("Failed to load survey details from the server.");
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
 
   const allRequests = Object.values(requests).sort(
     (a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
@@ -287,10 +301,11 @@ function EditRequestsTab() {
                     </span>
                     {/* Admin can always edit the survey directly */}
                     <button
-                      onClick={() => navigate(`/staff/survey/${req.surveyId}`)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(42,157,143,0.1)', color: '#2A9D8F', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                      onClick={() => handleEditSurvey(req.surveyId)}
+                      disabled={loadingEdit}
+                      style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(42,157,143,0.1)', color: '#2A9D8F', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', opacity: loadingEdit ? 0.6 : 1 }}
                     >
-                      <Pencil size={13} /> Edit Survey
+                      <Pencil size={13} /> {loadingEdit ? 'Loading...' : 'Edit Survey'}
                     </button>
                   </div>
                 </div>
@@ -354,6 +369,20 @@ function EditRequestsTab() {
 function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
   const [search, setSearch] = useState('');
   const [selectedSurvey, setSelectedSurvey] = useState<DraftSurvey | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const handleViewDetails = async (surveySummary: DraftSurvey) => {
+    setLoadingDetail(true);
+    try {
+      const fullDetail = await fetchSurveyDetail(surveySummary.id);
+      setSelectedSurvey(fullDetail);
+    } catch (err) {
+      console.error("Failed to load details:", err);
+      alert("Failed to load survey details from the server.");
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
 
   const submitted = surveys;
 
@@ -489,7 +518,7 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
               }}
               onMouseOver={e => (e.currentTarget.style.background = '#f8fafc')}
               onMouseOut={e => (e.currentTarget.style.background = 'white')}
-              onClick={() => setSelectedSurvey(survey)}
+              onClick={() => handleViewDetails(survey)}
             >
               {/* Household */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -552,7 +581,7 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
 
               {/* View button */}
               <button
-                onClick={e => { e.stopPropagation(); setSelectedSurvey(survey); }}
+                onClick={e => { e.stopPropagation(); handleViewDetails(survey); }}
                 title="View details"
                 style={{
                   background: 'rgba(42,157,143,0.1)', border: 'none', borderRadius: '8px',
@@ -574,60 +603,45 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
       {selectedSurvey && (
         <SurveyDetailPanel survey={selectedSurvey} onClose={() => setSelectedSurvey(null)} />
       )}
+
+      {/* Loading Detail Overlay */}
+      {loadingDetail && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 110,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(5px)', gap: '16px'
+        }}>
+          <div className="animate-spin" style={{ width: '48px', height: '48px', borderRadius: '50%', border: '4px solid rgba(255,255,255,0.2)', borderTopColor: '#2A9D8F' }} />
+          <p style={{ color: 'white', fontWeight: 600, fontSize: '0.9rem', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>Fetching survey details...</p>
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Overview Tab ───────────────────────────────────────────────────
-function OverviewTab({ onExport, surveys }: { onExport: () => void, surveys: DraftSurvey[] }) {
-  // Calculate Progress Data
-  let totalCorrectionsRequired = 0;
-  let totalCorrectionsMade = 0;
-  let totalNewDocsNeeded = 0;
-  let totalNewDocsObtained = 0;
-
-  surveys.forEach(survey => {
-    survey.members.forEach(member => {
-      // Corrections
-      const memberCorrections = survey.corrections?.[member.id!] || {};
-      Object.entries(memberCorrections).forEach(([docId, subTypes]) => {
-        if (subTypes && typeof subTypes === 'object') {
-          Object.entries(subTypes as Record<string, boolean>).forEach(([subId, checked]) => {
-            if (checked) {
-              totalCorrectionsRequired++;
-              if (survey.corrections_made?.[member.id!]?.[`${docId}__${subId}`]) {
-                totalCorrectionsMade++;
-              }
-            }
-          });
-        }
-      });
-
-      // New Docs
-      const memberNewDocs = survey.new_docs?.[member.id!] || {};
-      Object.entries(memberNewDocs).forEach(([docId, isNeeded]) => {
-        if (isNeeded) {
-          totalNewDocsNeeded++;
-          if (survey.corrections_made?.[member.id!]?.[`${docId}__new`]) {
-            totalNewDocsObtained++;
-          }
-        }
-      });
-    });
-  });
+function OverviewTab({ onExport, stats, loading }: { onExport: () => void, stats: any, loading: boolean }) {
+  if (loading || !stats) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '16px' }}>
+        <div className="animate-spin" style={{ width: '48px', height: '48px', borderRadius: '50%', border: '4px solid rgba(42,157,143,0.1)', borderTopColor: '#2A9D8F' }} />
+        <p style={{ color: '#64748b', fontSize: '0.88rem', fontWeight: 500 }}>Loading overview statistics...</p>
+      </div>
+    );
+  }
 
   const progressData = [
-    { name: 'Corrections', Required: totalCorrectionsRequired, Completed: totalCorrectionsMade },
-    { name: 'New Docs', Required: totalNewDocsNeeded, Completed: totalNewDocsObtained },
+    { name: 'Corrections', Required: stats.total_corrections_required, Completed: stats.total_corrections_made },
+    { name: 'New Docs', Required: stats.total_new_docs_needed, Completed: stats.total_new_docs_obtained },
   ];
 
   // Dynamic calculations
-  const totalHouseholds = surveys.length;
-  const totalMembers = surveys.reduce((acc, s) => acc + s.members.length, 0);
-  const bplCount = surveys.filter(s => s.household.economic_status === 'BPL').length;
+  const totalHouseholds = stats.total_households;
+  const totalMembers = stats.total_members;
+  const bplCount = stats.bpl_count;
   const bplPercent = totalHouseholds > 0 ? ((bplCount / totalHouseholds) * 100).toFixed(1) : 0;
-  const activeStaff = new Set(surveys.map(s => s.household.staff_name).filter(Boolean)).size;
-  const hamletsCovered = new Set(surveys.map(s => s.household.hamlet_code).filter(Boolean)).size;
+  const activeStaff = stats.active_staff_count;
+  const hamletsCovered = stats.hamlets_covered_count;
 
   const statCards = [
     { label: 'Total Households', value: totalHouseholds.toString(), icon: Home, colorClass: 'blue', iconBg: 'linear-gradient(135deg,#3b82f6,#60a5fa)', trend: 'Overall' },
@@ -636,25 +650,10 @@ function OverviewTab({ onExport, surveys }: { onExport: () => void, surveys: Dra
     { label: 'Active Staff', value: activeStaff.toString(), icon: Users, colorClass: 'purple', iconBg: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', trend: `${hamletsCovered} hamlets covered` },
   ];
 
-  const hamlets = surveys.reduce((acc, s) => {
-    const h = s.household.hamlet_code || 'Unknown';
-    acc[h] = (acc[h] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  const hamletData = Object.entries(hamlets).map(([name, count]) => ({ name, count }));
+  const hamletData = stats.hamlet_counts || [];
   if (hamletData.length === 0) hamletData.push({ name: 'No Data', count: 0 });
 
-  const docCounts: Record<string, number> = {};
-  surveys.forEach(s => {
-    Object.values(s.documents || {}).forEach(memberDocs => {
-      Object.entries(memberDocs || {}).forEach(([docId, hasDoc]) => {
-        if (hasDoc) {
-          docCounts[docId] = (docCounts[docId] || 0) + 1;
-        }
-      });
-    });
-  });
-  const docData = Object.entries(docCounts).map(([name, value]) => ({ name: name.replace(/_/g, ' '), value }));
+  const docData = (stats.document_counts || []).map((d: any) => ({ name: d.name.replace(/_/g, ' '), value: d.value }));
   if (docData.length === 0) docData.push({ name: 'No Data', value: 1 });
 
   return (
@@ -742,7 +741,7 @@ function OverviewTab({ onExport, surveys }: { onExport: () => void, surveys: Dra
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={docData} cx="50%" cy="45%" innerRadius={70} outerRadius={96} paddingAngle={4} dataKey="value" strokeWidth={0}>
-                  {docData.map((_e, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  {docData.map((_e: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', fontSize: '13px' }} />
                 <Legend verticalAlign="bottom" height={40} iconType="circle" iconSize={8} formatter={v => <span style={{ fontSize: '0.8rem', color: '#475569' }}>{v}</span>} />
@@ -762,6 +761,8 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'surveys' | 'requests'>('overview');
   const [remoteSurveys, setRemoteSurveys] = useState<DraftSurvey[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
     fetchAdminSurveys()
@@ -769,6 +770,18 @@ export default function AdminDashboard() {
       .catch(err => {
         console.warn("Failed to fetch from Supabase. Falling back to local.", err);
         setRemoteSurveys(Object.values(drafts).filter(d => d.status === 'synced'));
+      });
+  }, [drafts]);
+
+  useEffect(() => {
+    setLoadingStats(true);
+    fetchDashboardStats()
+      .then(data => setDashboardStats(data))
+      .catch(err => {
+        console.error("Failed to fetch dashboard stats:", err);
+      })
+      .finally(() => {
+        setLoadingStats(false);
       });
   }, [drafts]);
 
@@ -868,7 +881,7 @@ export default function AdminDashboard() {
 
       {/* Main content */}
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview'  && <OverviewTab surveys={submittedSurveys} onExport={exportData} />}
+        {activeTab === 'overview'  && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} />}
         {activeTab === 'surveys'   && <SubmittedSurveysTab surveys={submittedSurveys} />}
         {activeTab === 'requests'  && <EditRequestsTab />}
       </main>
