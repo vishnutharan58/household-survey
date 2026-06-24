@@ -1,6 +1,7 @@
 const path = require('path');
 const XLSX = require('xlsx');
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
 require('dotenv').config({ path: path.join(__dirname, '../apps/web/.env') });
 
 function mapFieldToDbCol(field) {
@@ -43,7 +44,9 @@ function mapFieldToDbCol(field) {
 function fixRel(r) {
   if (!r) return null;
   const l = r.trim().toLowerCase();
-  if (['husband', 'wife'].includes(l)) return 'Spouse';
+  if (l === 'husband') return 'Husband';
+  if (l === 'wife') return 'Wife';
+  if (l === 'spouse') return 'Spouse';
   if (l === 'son') return 'Son';
   if (l === 'daughter') return 'Daughter';
   if (l === 'father') return 'Father';
@@ -108,23 +111,18 @@ function formatExcelDate(excelDate) {
     const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
     return date.toISOString().split('T')[0];
   }
-  // Handle malformed string dates like "07.02-2026", "13-2-2026", "18.04-2026"
   const s = String(excelDate).trim();
-  // Try to extract day, month, year from various formats
   const match = s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})$/);
   if (match) {
     const [, d, m, y] = match;
     return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
-  // Already ISO format
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // Fallback
   return null;
 }
 
 const NEW_DOC_EXCLUDED = ['aadhaar_card', 'ration_card'];
 
-// Valid columns for schemes_accessed table (from schema.sql)
 const VALID_SCHEME_COLS = new Set([
   'old_age_pension', 'widow_pension', 'disability_pension',
   'cm_girl_child_protection_scheme', 'death_relief_assistance',
@@ -133,7 +131,6 @@ const VALID_SCHEME_COLS = new Set([
   'short_term_relief', 'saving_period_schemes', 'vb_g_ram_g_act', 'cmchis'
 ]);
 
-// Valid columns for eligible_schemes table
 const VALID_ELIGIBLE_COLS = new Set([
   ...VALID_SCHEME_COLS, 'maternity_benefit_schemes', 'different_subsidiaries',
   'if_applied_follow_up_needed'
@@ -146,6 +143,52 @@ async function main() {
   });
   if (authError) { console.error('Login failed:', authError.message); process.exit(1); }
   console.log('Logged in.');
+
+  // CLEAR DB RECORDS CHUNK-BY-CHUNK
+  console.log('Clearing existing database records in chunks...');
+  const tables = [
+    'documents', 
+    'corrections_required', 
+    'new_documents_needed', 
+    'base_documents_available', 
+    'schemes_accessed', 
+    'eligible_schemes', 
+    'members', 
+    'households'
+  ];
+
+  for (const table of tables) {
+    console.log(`  Clearing table "${table}"...`);
+    let deletedCount = 0;
+    while (true) {
+      const { data, error: selectErr } = await supabase
+        .from(table)
+        .select('id')
+        .limit(2000);
+      
+      if (selectErr) {
+        console.error(`Failed to select from ${table}:`, selectErr.message);
+        process.exit(1);
+      }
+      
+      if (!data || data.length === 0) break;
+      
+      const ids = data.map(d => d.id);
+      const { error: deleteErr } = await supabase
+        .from(table)
+        .delete()
+        .in('id', ids);
+        
+      if (deleteErr) {
+        console.error(`Failed to delete from ${table}:`, deleteErr.message);
+        process.exit(1);
+      }
+      deletedCount += ids.length;
+      console.log(`    Deleted ${ids.length} rows (total ${deletedCount})`);
+      await new Promise(r => setTimeout(r, 50));
+    }
+  }
+  console.log('Database cleared successfully.');
 
   const workbook = XLSX.readFile(path.join(__dirname, '../HOUSEHOLD_SURVEY.xlsx'));
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -189,20 +232,21 @@ async function main() {
 
     if (row[4]) {
       lastHH = {
+        id: crypto.randomUUID(), // Pre-generate household ID
         date: formatExcelDate(row[1]),
-        staff_name: String(row[2] || ''),
-        hamlet_code: String(row[3] || ''),
-        household_number: String(row[4]),
-        individual_number: String(row[5] || ''),
-        block: String(row[6] || ''),
-        village_panchayath: String(row[7] || ''),
-        village: String(row[8] || ''),
-        hamlet_name: String(row[9] || ''),
-        door_no: String(row[10] || ''),
-        street: String(row[11] || ''),
-        economic_status: fixEconomicStatus(String(row[12] || '')),
-        religion: String(row[13] || ''),
-        community: String(row[14] || ''),
+        staff_name: String(row[2] || '').trim(),
+        hamlet_code: String(row[3] || '').trim(),
+        household_number: String(row[4]).trim(),
+        individual_number: String(row[5] || '').trim(),
+        block: String(row[6] || '').trim(),
+        village_panchayath: String(row[7] || '').trim(),
+        village: String(row[8] || '').trim(),
+        hamlet_name: String(row[9] || '').trim(),
+        door_no: String(row[10] || '').trim(),
+        street: String(row[11] || '').trim(),
+        economic_status: fixEconomicStatus(String(row[12] || '').trim()),
+        religion: String(row[13] || '').trim(),
+        community: String(row[14] || '').trim(),
       };
       hhList.push({ hhData: { ...lastHH }, members: [] });
       currentHHIndex = hhList.length - 1;
@@ -212,17 +256,18 @@ async function main() {
     if (!name || currentHHIndex < 0) continue;
 
     const member = {
-      name: String(name),
-      relationship: fixRel(String(row[16] || '')),
+      id: crypto.randomUUID(), // Pre-generate member ID
+      name: String(name).trim(),
+      relationship: fixRel(String(row[16] || '').trim()),
       age: parseInt(row[17]) || null,
-      gender: fixGender(String(row[18] || '')),
-      qualification: fixQual(String(row[19] || '')),
-      marital_status: fixMaritalStatus(String(row[20] || '')),
+      gender: fixGender(String(row[18] || '').trim()),
+      qualification: fixQual(String(row[19] || '').trim()),
+      marital_status: fixMaritalStatus(String(row[20] || '').trim()),
       head_of_family: row[21] ? true : false,
-      occupation: String(row[22] || ''),
-      category: String(row[23] || ''),
-      mbl_number: String(row[24] || ''),
-      different_aadhaar_linked_mobile: String(row[25] || ''),
+      occupation: String(row[22] || '').trim(),
+      category: String(row[23] || '').trim(),
+      mbl_number: String(row[24] || '').trim(),
+      different_aadhaar_linked_mobile: String(row[25] || '').trim(),
     };
 
     // Parse all checkbox sections
@@ -273,8 +318,8 @@ async function main() {
 
     // 1. Insert households
     const hhPayloads = batch.map(h => h.hhData);
-    const { data: insertedHHs, error: hhErr } = await supabase
-      .from('households').insert(hhPayloads).select('id, household_number, hamlet_code');
+    const { error: hhErr } = await supabase
+      .from('households').insert(hhPayloads);
     
     if (hhErr) {
       console.error(`  HH batch ${b} error:`, hhErr.message);
@@ -282,19 +327,15 @@ async function main() {
       continue;
     }
 
-    // Build lookup from inserted HHs
-    const hhIdMap = new Map();
-    insertedHHs.forEach(h => hhIdMap.set(`${h.household_number}-${h.hamlet_code}`, h.id));
-
-    // 2. Collect all members for this batch
+    // 2. Collect all members for this batch using pre-generated IDs
     const allMembers = [];
-    const memberMeta = []; // parallel array to track _docs etc.
+    const memberMeta = []; // parallel array to track metadata
     
     batch.forEach(h => {
-      const hhId = hhIdMap.get(`${h.hhData.household_number}-${h.hhData.hamlet_code}`);
-      if (!hhId) return;
+      const hhId = h.hhData.id;
       h.members.forEach(m => {
         allMembers.push({
+          id: m.id,
           household_id: hhId,
           name: m.name,
           relationship: m.relationship,
@@ -312,30 +353,34 @@ async function main() {
       });
     });
 
-    if (allMembers.length === 0) continue;
-
-    // Insert members in sub-batches of 500
-    const insertedMemberIds = [];
-    for (let mi = 0; mi < allMembers.length; mi += 500) {
-      const chunk = allMembers.slice(mi, mi + 500);
-      const { data: mData, error: mErr } = await supabase.from('members').insert(chunk).select('id');
-      if (mErr) {
-        console.error(`  Mem sub-batch error at ${b}+${mi}:`, mErr.message);
-        errCount++;
-        // Push nulls to keep alignment
-        for (let x = 0; x < chunk.length; x++) insertedMemberIds.push(null);
-        continue;
-      }
-      mData.forEach(d => insertedMemberIds.push(d.id));
+    if (allMembers.length === 0) {
+      hhCount += batch.length;
+      continue;
     }
 
-    // 3. Batch insert related tables
+    // Insert members in sub-batches of 500
+    let memBatchErr = false;
+    for (let mi = 0; mi < allMembers.length; mi += 500) {
+      const chunk = allMembers.slice(mi, mi + 500);
+      const { error: mErr } = await supabase.from('members').insert(chunk);
+      if (mErr) {
+        console.error(`  Mem sub-batch error at ${b}+${mi}:`, mErr.message);
+        memBatchErr = true;
+        break;
+      }
+    }
+
+    if (memBatchErr) {
+      errCount += batch.length;
+      continue;
+    }
+
+    // 3. Batch insert related tables using pre-generated IDs
     const docsArr = [], newDocsArr = [], baseDocsArr = [], schemesArr = [], eligArr = [], corrsArr = [];
 
-    for (let mi = 0; mi < insertedMemberIds.length; mi++) {
-      const memId = insertedMemberIds[mi];
-      if (!memId) continue;
+    for (let mi = 0; mi < allMembers.length; mi++) {
       const m = memberMeta[mi];
+      const memId = m.id;
 
       docsArr.push({ member_id: memId, ...m._docs });
       newDocsArr.push({ member_id: memId, ...m._newDocs });
@@ -345,7 +390,7 @@ async function main() {
       if (Object.keys(m._corrs).length > 0) corrsArr.push({ member_id: memId, corrections: m._corrs });
     }
 
-    // Fire all related inserts in parallel, in sub-batches of 500
+    // Fire related inserts in parallel, in sub-batches of 500
     async function batchInsert(table, arr) {
       for (let i = 0; i < arr.length; i += 500) {
         const chunk = arr.slice(i, i + 500);
@@ -363,8 +408,8 @@ async function main() {
       batchInsert('corrections_required', corrsArr),
     ]);
 
-    hhCount += insertedHHs.length;
-    memCount += insertedMemberIds.filter(Boolean).length;
+    hhCount += batch.length;
+    memCount += allMembers.length;
     console.log(`  Progress: ${hhCount}/${hhList.length} HH, ${memCount} members...`);
     
     await new Promise(r => setTimeout(r, 50));
