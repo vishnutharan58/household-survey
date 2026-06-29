@@ -871,19 +871,49 @@ export default function SurveyForm() {
                       </div>
 
                       {/* Occupation */}
-                      <div>
+                      <div className="space-y-1">
                         <label className="block text-xs font-medium text-gray-500 mb-1">Occupation</label>
-                        <input
-                          type="text"
-                          className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
-                          value={member.occupation || ''}
-                          onChange={(e) => {
-                            const newMembers = [...draft.members];
-                            newMembers[i] = { ...newMembers[i], occupation: e.target.value };
-                            setDraft({ ...draft, members: newMembers });
-                          }}
-                          placeholder="e.g. Fisherman, Farmer"
-                        />
+                        {(() => {
+                          const standardOccupations = ["Fisherman", "Government Employee", "Unemployed"];
+                          const isStandard = standardOccupations.includes(member.occupation || '');
+                          const dropdownValue = member.occupation ? (isStandard ? member.occupation : "Others") : "";
+
+                          return (
+                            <div className="space-y-2">
+                              <select
+                                className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                                value={dropdownValue}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const newMembers = [...draft.members];
+                                  newMembers[i] = { ...newMembers[i], occupation: val === "Others" ? "Others" : val };
+                                  setDraft({ ...draft, members: newMembers });
+                                }}
+                              >
+                                <option value="">Select...</option>
+                                <option value="Fisherman">Fisherman</option>
+                                <option value="Government Employee">Government Employee</option>
+                                <option value="Unemployed">Unemployed</option>
+                                <option value="Others">Others</option>
+                              </select>
+
+                              {dropdownValue === "Others" && (
+                                <input
+                                  type="text"
+                                  className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                                  value={member.occupation === "Others" ? "" : member.occupation}
+                                  onChange={(e) => {
+                                    const textVal = e.target.value;
+                                    const newMembers = [...draft.members];
+                                    newMembers[i] = { ...newMembers[i], occupation: textVal };
+                                    setDraft({ ...draft, members: newMembers });
+                                  }}
+                                  placeholder="Specify occupation..."
+                                />
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
