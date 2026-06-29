@@ -7,12 +7,78 @@ import { v4 as uuidv4 } from 'uuid'; // we need to install uuid if not already
 
 // Hamlet codes per staff — mirrors Login.tsx
 const STAFF_HAMLET_MAP: Record<string, string[]> = {
-  'suganya@staff.com':  ['1.1','1.2','1.3','2.1','2.2','2.3','2.4','2.5','2.6','2.7'],
-  'freeda@staff.com':   ['3.1','3.2','3.3','4.1','4.2','4.3','4.4','4.5','6.1','6.2','6.3'],
-  'berdina@staff.com':  ['5.1','5.2','5.3','7.1','7.2','7.3','8.1','8.2','8.3','9.1','9.2','9.3'],
-  'fernisha@staff.com': ['10.1','10.2','11.1','11.2','11.3','11.4','11.5','11.6','11.7'],
-  'vijini@staff.com':   ['12.1','12.2','12.3','12.4','12.5','12.6','12.7','13.1','13.2','13.3'],
-  'raksha@staff.com':   ['14.1','14.2','15.1','15.2','15.3','15.4','15.5','16.1','16.2','17.1','17.2','17.3'],
+  'suganya@staff.com': ['1.1', '1.2', '1.3', '2.1', '2.2', '2.3', '2.4', '2.5', '2.6', '2.7'],
+  'freeda@staff.com': ['3.1', '3.2', '3.3', '4.1', '4.2', '4.3', '4.4', '4.5', '6.1', '6.2', '6.3'],
+  'berdina@staff.com': ['5.1', '5.2', '5.3', '7.1', '7.2', '7.3', '8.1', '8.2', '8.3', '9.1', '9.2', '9.3'],
+  'fernisha@staff.com': ['10.1', '10.2', '11.1', '11.2', '11.3', '11.4', '11.5', '11.6', '11.7'],
+  'vijini@staff.com': ['12.1', '12.2', '12.3', '12.4', '12.5', '12.6', '12.7', '13.1', '13.2', '13.3'],
+  'raksha@staff.com': ['14.1', '14.2', '15.1', '15.2', '15.3', '15.4', '15.5', '16.1', '16.2', '17.1', '17.2', '17.3'],
+};
+
+const HAMLET_CODE_TO_NAME: Record<string, string> = {
+  "1.1": "Community Hall",
+  "1.2": "Primary School",
+  "1.3": "Near CSI Church",
+  "2.1": "Arockya Nather Kurusadi",
+  "2.2": "D.C Nagar",
+  "2.3": "Anthoniyar Kurusadi",
+  "2.4": "Claret I, Claret II",
+  "2.5": "Pillar Nagar",
+  "2.6": "Murugan Kuntam",
+  "2.7": "Fathima Matha",
+  "3.1": "Old Church",
+  "3.2": "Kalarai Thottam",
+  "4.1": "St. Antony",
+  "4.2": "Visenthiyappar Kurusadi",
+  "4.3": "Anthirayar Kurusadi",
+  "4.4": "YMCA Colony",
+  "4.5": "Lurthu Nager",
+  "5.1": "Convent Road",
+  "5.2": "Arputha Matha Kurusadi",
+  "5.3": "Tsunami Colony",
+  "6.1": "St. Mathew Church",
+  "6.2": "Tsunami Colony",
+  "6.3": "Loorth Colony",
+  "7.1": "Church Road",
+  "7.2": "Antony Street",
+  "7.3": "Georgiyar Street",
+  "8.1": "Siluvaiyar",
+  "9.1": "Sahaya Matha",
+  "9.2": "Xavier Street",
+  "9.3": "Antony Street",
+  "10.1": "Siluvaiyar anbiyam",
+  "10.2": "Thomaiyar Kurusadi",
+  "11.1": "Madha Colony",
+  "11.2": "Anthoniyar Street",
+  "11.3": "Sahaya madha street",
+  "11.4": "Xavier Street",
+  "11.5": "Sebasthiyar",
+  "11.6": "Tsunami Colony",
+  "11.7": "Hospital",
+  "12.1": "Anthoniyar Kurusadi",
+  "12.2": "Alagara Matha Kurusadi",
+  "12.3": "Ice Plant",
+  "12.4": "Ponnam Thoppu",
+  "12.5": "Lenal Kurusadi",
+  "12.6": "Annal Street",
+  "12.7": "Sivantha Man",
+  "13.1": "Anthoniyar Street",
+  "13.2": "Fathima Matha Street",
+  "13.3": "Thomaiyar Kurusadi",
+  "14.1": "Pandara Thopu",
+  "14.2": "St. Jude's Church",
+  "15.1": "Annammal Kurusadi",
+  "15.2": "Lurthu Matha Kurusadi",
+  "15.3": "Bartholamea Church",
+  "15.4": "Kalarai Thottam",
+  "15.5": "St. Micheal School Road",
+  "16.1": "Yaggappar Kurusadi",
+  "16.2": "St. James Church",
+  "16.4": "Vaikal Theru",
+  "17.1": "Siluvaiyar Street",
+  "17.2": "Soosaiyapper Kurusadi",
+  "17.3": "Sahaya Matha Kurusadi",
+  "17.4": "Vayal Colony",
 };
 
 // Default blocks per staff
@@ -141,12 +207,15 @@ export default function SurveyForm() {
     if (id && drafts[id]) {
       return drafts[id];
     }
+    const initialHamletCode = hamlet_code || '';
+    const initialHamletName = HAMLET_CODE_TO_NAME[initialHamletCode] || '';
     return {
       id: id || uuidv4(),
-      household: { 
+      household: {
         date: new Date().toISOString().split('T')[0],
         staff_name: user?.email || '',
-        hamlet_code: hamlet_code || '',
+        hamlet_code: initialHamletCode,
+        hamlet_name: initialHamletName,
         block: user?.email ? (STAFF_BLOCK_MAP[user.email] || '') : '',
       },
       members: [],
@@ -247,10 +316,10 @@ export default function SurveyForm() {
     setDraft(prev => {
       const newMade = { ...prev.corrections_made };
       if (!newMade[memberId]) newMade[memberId] = {};
-      
+
       const key = `${docId}__${subTypeId}`;
       newMade[memberId][key] = !newMade[memberId][key];
-      
+
       return { ...prev, corrections_made: newMade };
     });
   };
@@ -423,11 +492,10 @@ export default function SurveyForm() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(idx)}
-                className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  activeTab === idx 
-                    ? 'bg-accent text-white shadow' 
+                className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === idx
+                    ? 'bg-accent text-white shadow'
                     : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 {idx + 1}. {tab}
               </button>
@@ -445,14 +513,81 @@ export default function SurveyForm() {
               <h2 className="text-lg font-bold border-b pb-2">Household Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                {/* ── Auto-filled fields ── */}
+                {/* ── Auto-filled / Identity fields ── */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Date</label>
-                  <input type="date" className="mt-1 block w-full border rounded-md p-2" value={draft.household.date || ''} onChange={e => setDraft({...draft, household: {...draft.household, date: e.target.value}})} />
+                  <input type="date" className="mt-1 block w-full border rounded-md p-2" value={draft.household.date || ''} onChange={e => setDraft({ ...draft, household: { ...draft.household, date: e.target.value } })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Staff Name</label>
                   <input type="text" disabled className="mt-1 block w-full border rounded-md p-2 bg-gray-100" value={draft.household.staff_name || ''} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Block</label>
+                  <input
+                    type="text"
+                    placeholder="Enter block name"
+                    className="mt-1 block w-full border rounded-md p-2"
+                    value={draft.household.block || ''}
+                    onChange={e => setDraft({ ...draft, household: { ...draft.household, block: e.target.value } })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Panchayath</label>
+                  {isAdmin ? (
+                    <input type="text" disabled className="mt-1 block w-full border rounded-md p-2 bg-gray-100" value={draft.household.village_panchayath || ''} />
+                  ) : (() => {
+                    const assignedPanchayaths = STAFF_PANCHAYATH_MAP[user?.email || ''] ?? [];
+                    const storedPanchayath = draft.household.village_panchayath || '';
+                    const optionList = storedPanchayath && !assignedPanchayaths.includes(storedPanchayath)
+                      ? [storedPanchayath, ...assignedPanchayaths]
+                      : assignedPanchayaths;
+
+                    return (
+                      <select
+                        className="mt-1 block w-full border rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-accent"
+                        value={storedPanchayath}
+                        onChange={e => setDraft({ ...draft, household: { ...draft.household, village_panchayath: e.target.value } })}
+                      >
+                        <option value="">Select panchayath...</option>
+                        {optionList.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    );
+                  })()}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Village</label>
+                  {isAdmin ? (
+                    <input type="text" disabled className="mt-1 block w-full border rounded-md p-2 bg-gray-100" value={draft.household.village || ''} />
+                  ) : (() => {
+                    const assignedVillages = STAFF_VILLAGE_MAP[user?.email || ''] ?? [];
+                    const storedVillage = draft.household.village || '';
+                    const optionList = storedVillage && !assignedVillages.includes(storedVillage)
+                      ? [storedVillage, ...assignedVillages]
+                      : assignedVillages;
+
+                    return (
+                      <select
+                        className="mt-1 block w-full border rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-accent"
+                        value={storedVillage}
+                        onChange={e => setDraft({ ...draft, household: { ...draft.household, village: e.target.value } })}
+                      >
+                        <option value="">Select village...</option>
+                        {optionList.map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    );
+                  })()}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Hamlet Name</label>
+                  <input
+                    type="text"
+                    disabled={isAdmin}
+                    placeholder="Hamlet name"
+                    className={`mt-1 block w-full border rounded-md p-2 ${isAdmin ? 'bg-gray-100' : ''}`}
+                    value={draft.household.hamlet_name || ''}
+                    onChange={e => setDraft({ ...draft, household: { ...draft.household, hamlet_name: e.target.value } })}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Hamlet Code</label>
@@ -476,7 +611,18 @@ export default function SurveyForm() {
                       <select
                         className="mt-1 block w-full border rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-accent"
                         value={currentValue}
-                        onChange={e => setDraft({ ...draft, household: { ...draft.household, hamlet_code: e.target.value } })}
+                        onChange={e => {
+                          const code = e.target.value;
+                          const name = HAMLET_CODE_TO_NAME[code] || '';
+                          setDraft(prev => ({
+                            ...prev,
+                            household: {
+                              ...prev.household,
+                              hamlet_code: code,
+                              hamlet_name: name || prev.household.hamlet_name || ''
+                            }
+                          }));
+                        }}
                       >
                         {currentValue === '' && <option value="">Select hamlet...</option>}
                         {optionList.map(code => (
@@ -486,16 +632,14 @@ export default function SurveyForm() {
                     );
                   })()}
                 </div>
-
-                {/* ── Household identity ── */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Block</label>
+                  <label className="block text-sm font-medium text-gray-700">Household Number</label>
                   <input
                     type="text"
-                    placeholder="Enter block name"
+                    placeholder="Household No."
                     className="mt-1 block w-full border rounded-md p-2"
-                    value={draft.household.block || ''}
-                    onChange={e => setDraft({...draft, household: {...draft.household, block: e.target.value}})}
+                    value={draft.household.household_number || ''}
+                    onChange={e => setDraft({ ...draft, household: { ...draft.household, household_number: e.target.value } })}
                   />
                 </div>
                 <div>
@@ -505,67 +649,9 @@ export default function SurveyForm() {
                     placeholder="Individual / Serial No."
                     className="mt-1 block w-full border rounded-md p-2"
                     value={draft.household.individual_number || ''}
-                    onChange={e => setDraft({...draft, household: {...draft.household, individual_number: e.target.value}})}
+                    onChange={e => setDraft({ ...draft, household: { ...draft.household, individual_number: e.target.value } })}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Household Number</label>
-                  <input
-                    type="text"
-                    placeholder="Household No."
-                    className="mt-1 block w-full border rounded-md p-2"
-                    value={draft.household.household_number || ''}
-                    onChange={e => setDraft({...draft, household: {...draft.household, household_number: e.target.value}})}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Village</label>
-                  {isAdmin ? (
-                    <input type="text" disabled className="mt-1 block w-full border rounded-md p-2 bg-gray-100" value={draft.household.village || ''} />
-                  ) : (() => {
-                    const assignedVillages = STAFF_VILLAGE_MAP[user?.email || ''] ?? [];
-                    const storedVillage = draft.household.village || '';
-                    const optionList = storedVillage && !assignedVillages.includes(storedVillage)
-                      ? [storedVillage, ...assignedVillages]
-                      : assignedVillages;
-
-                    return (
-                      <select
-                        className="mt-1 block w-full border rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-accent"
-                        value={storedVillage}
-                        onChange={e => setDraft({...draft, household: {...draft.household, village: e.target.value}})}
-                      >
-                        <option value="">Select village...</option>
-                        {optionList.map(v => <option key={v} value={v}>{v}</option>)}
-                      </select>
-                    );
-                  })()}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Panchayath</label>
-                  {isAdmin ? (
-                    <input type="text" disabled className="mt-1 block w-full border rounded-md p-2 bg-gray-100" value={draft.household.village_panchayath || ''} />
-                  ) : (() => {
-                    const assignedPanchayaths = STAFF_PANCHAYATH_MAP[user?.email || ''] ?? [];
-                    const storedPanchayath = draft.household.village_panchayath || '';
-                    const optionList = storedPanchayath && !assignedPanchayaths.includes(storedPanchayath)
-                      ? [storedPanchayath, ...assignedPanchayaths]
-                      : assignedPanchayaths;
-
-                    return (
-                      <select
-                        className="mt-1 block w-full border rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-accent"
-                        value={storedPanchayath}
-                        onChange={e => setDraft({...draft, household: {...draft.household, village_panchayath: e.target.value}})}
-                      >
-                        <option value="">Select panchayath...</option>
-                        {optionList.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                    );
-                  })()}
-                </div>
-
-                {/* ── Address ── */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Door No.</label>
                   <input
@@ -573,7 +659,7 @@ export default function SurveyForm() {
                     placeholder="Door / House No."
                     className="mt-1 block w-full border rounded-md p-2"
                     value={draft.household.door_no || ''}
-                    onChange={e => setDraft({...draft, household: {...draft.household, door_no: e.target.value}})}
+                    onChange={e => setDraft({ ...draft, household: { ...draft.household, door_no: e.target.value } })}
                   />
                 </div>
                 <div>
@@ -583,7 +669,7 @@ export default function SurveyForm() {
                     placeholder="Street name"
                     className="mt-1 block w-full border rounded-md p-2"
                     value={draft.household.street || ''}
-                    onChange={e => setDraft({...draft, household: {...draft.household, street: e.target.value}})}
+                    onChange={e => setDraft({ ...draft, household: { ...draft.household, street: e.target.value } })}
                   />
                 </div>
 
@@ -593,7 +679,7 @@ export default function SurveyForm() {
                   <select
                     className="mt-1 block w-full border rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-accent"
                     value={draft.household.religion || ''}
-                    onChange={e => setDraft({...draft, household: {...draft.household, religion: e.target.value}})}
+                    onChange={e => setDraft({ ...draft, household: { ...draft.household, religion: e.target.value } })}
                   >
                     <option value="">Select religion...</option>
                     <option value="Hindu">Hindu</option>
@@ -610,15 +696,12 @@ export default function SurveyForm() {
                   <select
                     className="mt-1 block w-full border rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-accent"
                     value={draft.household.community || ''}
-                    onChange={e => setDraft({...draft, household: {...draft.household, community: e.target.value}})}
+                    onChange={e => setDraft({ ...draft, household: { ...draft.household, community: e.target.value } })}
                   >
                     <option value="">Select community...</option>
                     <option value="BC">BC</option>
                     <option value="MBC">MBC</option>
                     <option value="SC">SC</option>
-                    <option value="ST">ST</option>
-                    <option value="OC">OC</option>
-                    <option value="DNC">DNC</option>
                     <option value="Others">Others</option>
                   </select>
                 </div>
@@ -627,7 +710,7 @@ export default function SurveyForm() {
                   <select
                     className="mt-1 block w-full border rounded-md p-2"
                     value={draft.household.economic_status || ''}
-                    onChange={e => setDraft({...draft, household: {...draft.household, economic_status: e.target.value as any}})}
+                    onChange={e => setDraft({ ...draft, household: { ...draft.household, economic_status: e.target.value as any } })}
                   >
                     <option value="">Select...</option>
                     <option value="BPL">BPL</option>
@@ -664,7 +747,7 @@ export default function SurveyForm() {
                           onChange={(e) => {
                             const newMembers = [...draft.members];
                             newMembers[i] = { ...newMembers[i], name: e.target.value };
-                            setDraft({...draft, members: newMembers});
+                            setDraft({ ...draft, members: newMembers });
                           }}
                           placeholder="Enter full name"
                         />
@@ -679,7 +762,7 @@ export default function SurveyForm() {
                           onChange={(e) => {
                             const newMembers = [...draft.members];
                             newMembers[i] = { ...newMembers[i], relationship: e.target.value };
-                            setDraft({...draft, members: newMembers});
+                            setDraft({ ...draft, members: newMembers });
                           }}
                         >
                           <option value="">Select...</option>
@@ -715,7 +798,7 @@ export default function SurveyForm() {
                           onChange={(e) => {
                             const newMembers = [...draft.members];
                             newMembers[i] = { ...newMembers[i], age: e.target.value === '' ? undefined : Number(e.target.value) };
-                            setDraft({...draft, members: newMembers});
+                            setDraft({ ...draft, members: newMembers });
                           }}
                           placeholder="Age"
                         />
@@ -730,7 +813,7 @@ export default function SurveyForm() {
                           onChange={(e) => {
                             const newMembers = [...draft.members];
                             newMembers[i] = { ...newMembers[i], gender: e.target.value as any };
-                            setDraft({...draft, members: newMembers});
+                            setDraft({ ...draft, members: newMembers });
                           }}
                         >
                           <option value="">Select...</option>
@@ -749,7 +832,7 @@ export default function SurveyForm() {
                           onChange={(e) => {
                             const newMembers = [...draft.members];
                             newMembers[i] = { ...newMembers[i], qualification: e.target.value };
-                            setDraft({...draft, members: newMembers});
+                            setDraft({ ...draft, members: newMembers });
                           }}
                         >
                           <option value="">Select...</option>
@@ -776,7 +859,7 @@ export default function SurveyForm() {
                           onChange={(e) => {
                             const newMembers = [...draft.members];
                             newMembers[i] = { ...newMembers[i], marital_status: e.target.value as any };
-                            setDraft({...draft, members: newMembers});
+                            setDraft({ ...draft, members: newMembers });
                           }}
                         >
                           <option value="">Select...</option>
@@ -797,7 +880,7 @@ export default function SurveyForm() {
                           onChange={(e) => {
                             const newMembers = [...draft.members];
                             newMembers[i] = { ...newMembers[i], occupation: e.target.value };
-                            setDraft({...draft, members: newMembers});
+                            setDraft({ ...draft, members: newMembers });
                           }}
                           placeholder="e.g. Fisherman, Farmer"
                         />
@@ -826,8 +909,8 @@ export default function SurveyForm() {
                           return (
                             <label key={doc.id} className="flex items-start gap-2 cursor-pointer group">
                               <div className="relative flex items-center mt-1">
-                                <input 
-                                  type="checkbox" 
+                                <input
+                                  type="checkbox"
                                   className="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent"
                                   checked={isChecked as boolean}
                                   onChange={() => handleDocToggle(member.id!, 'documents', doc.id)}
@@ -1005,7 +1088,7 @@ export default function SurveyForm() {
                   {draft.members.map(member => {
                     const memberCorrections = draft.corrections?.[member.id!] || {};
                     const docEntries = Object.entries(memberCorrections).filter(([_, subTypes]) => !!subTypes);
-                    
+
                     const memberNewDocs = draft.new_docs?.[member.id!] || {};
                     const newDocEntries = Object.entries(memberNewDocs).filter(([_, isNeeded]) => isNeeded);
 
@@ -1139,7 +1222,7 @@ export default function SurveyForm() {
                   {draft.members.map(member => (
                     <div key={member.id} className="border rounded-xl p-4 bg-purple-50/50">
                       <h3 className="font-semibold text-purple-800 mb-4 text-lg border-b border-purple-100 pb-1">{member.name || 'Unnamed Member'}</h3>
-                      
+
                       <div className="mb-6">
                         <h4 className="font-medium text-gray-900 mb-3">Base Documents</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -1147,8 +1230,8 @@ export default function SurveyForm() {
                             const isChecked = draft.base_docs?.[member.id!]?.[doc.id] || false;
                             return (
                               <label key={doc.id} className="flex items-start gap-2 cursor-pointer group">
-                                <input 
-                                  type="checkbox" 
+                                <input
+                                  type="checkbox"
                                   className="w-4 h-4 mt-1 text-purple-600 border-gray-300 rounded focus:ring-purple-600"
                                   checked={isChecked as boolean}
                                   onChange={() => handleDocToggle(member.id!, 'base_docs', doc.id)}
@@ -1167,8 +1250,8 @@ export default function SurveyForm() {
                             const isChecked = draft.schemes?.[member.id!]?.[scheme.id] || false;
                             return (
                               <label key={scheme.id} className="flex items-start gap-2 cursor-pointer group">
-                                <input 
-                                  type="checkbox" 
+                                <input
+                                  type="checkbox"
                                   className="w-4 h-4 mt-1 text-purple-600 border-gray-300 rounded focus:ring-purple-600"
                                   checked={isChecked as boolean}
                                   onChange={() => handleDocToggle(member.id!, 'schemes', scheme.id)}
@@ -1189,11 +1272,11 @@ export default function SurveyForm() {
           {activeTab === 6 && (
             <div>
               <h2 className="text-lg font-bold border-b pb-2 mb-4">Remarks</h2>
-              <textarea 
-                className="w-full border rounded-md p-3 h-32" 
+              <textarea
+                className="w-full border rounded-md p-3 h-32"
                 placeholder="Enter any additional observations..."
                 value={draft.household.remarks || ''}
-                onChange={e => setDraft({...draft, household: {...draft.household, remarks: e.target.value}})}
+                onChange={e => setDraft({ ...draft, household: { ...draft.household, remarks: e.target.value } })}
               ></textarea>
             </div>
           )}
@@ -1201,15 +1284,15 @@ export default function SurveyForm() {
 
         {/* Footer Nav */}
         <div className="flex justify-between mt-6">
-          <button 
-            onClick={prevTab} 
+          <button
+            onClick={prevTab}
             disabled={activeTab === 0}
             className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
             Previous
           </button>
-          <button 
-            onClick={nextTab} 
+          <button
+            onClick={nextTab}
             disabled={activeTab === TABS.length - 1}
             className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 disabled:opacity-50"
           >

@@ -11,6 +11,7 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
       date: draft.household.date,
       staff_name: draft.household.staff_name,
       hamlet_code: draft.household.hamlet_code,
+      hamlet_name: draft.household.hamlet_name,
       household_number: draft.household.household_number,
       individual_number: draft.household.individual_number,
       block: draft.household.block,
