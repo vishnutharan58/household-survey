@@ -620,7 +620,7 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
 }
 
 // ─── Overview Tab ───────────────────────────────────────────────────
-function OverviewTab({ onExport, stats, loading }: { onExport: () => void, stats: any, loading: boolean }) {
+function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => void, stats: any, loading: boolean, surveys: DraftSurvey[] }) {
   if (loading || !stats) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '16px' }}>
@@ -655,6 +655,29 @@ function OverviewTab({ onExport, stats, loading }: { onExport: () => void, stats
 
   const docData = (stats.document_counts || []).map((d: any) => ({ name: d.name.replace(/_/g, ' '), value: d.value }));
   if (docData.length === 0) docData.push({ name: 'No Data', value: 1 });
+
+  // Calculate hamlet-wise individual counts dynamically from synced surveys
+  const hamletIndividualsMap: Record<string, number> = {};
+  if (surveys && surveys.length > 0) {
+    surveys.forEach(s => {
+      const hamlet = s.household?.hamlet_code || 'Unknown';
+      const memberCount = s.members?.length || 0;
+      hamletIndividualsMap[hamlet] = (hamletIndividualsMap[hamlet] || 0) + memberCount;
+    });
+  } else if (stats?.hamlet_individual_counts && stats.hamlet_individual_counts.length > 0) {
+    // Fallback to database statistics
+    stats.hamlet_individual_counts.forEach((hc: any) => {
+      hamletIndividualsMap[hc.name] = hc.count;
+    });
+  }
+
+  const hamletIndividualData = Object.entries(hamletIndividualsMap)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+
+  if (hamletIndividualData.length === 0) {
+    hamletIndividualData.push({ name: 'No Data', count: 0 });
+  }
 
   return (
     <div className="animate-fade-in">
@@ -746,6 +769,30 @@ function OverviewTab({ onExport, stats, loading }: { onExport: () => void, stats
                 <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', fontSize: '13px' }} />
                 <Legend verticalAlign="bottom" height={40} iconType="circle" iconSize={8} formatter={v => <span style={{ fontSize: '0.8rem', color: '#475569' }}>{v}</span>} />
               </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="chart-card">
+          <h2 className="section-title">
+            <span style={{ width: '6px', height: '22px', borderRadius: '3px', background: 'linear-gradient(#8b5cf6,#3b82f6)', display: 'inline-block' }} />
+            Hamlet-wise Individuals
+          </h2>
+          <div style={{ height: '280px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={hamletIndividualData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', fontSize: '13px' }} cursor={{ fill: 'rgba(139,92,246,0.06)' }} />
+                <Bar dataKey="count" fill="url(#individualBarGradient)" radius={[6, 6, 0, 0]} />
+                <defs>
+                  <linearGradient id="individualBarGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" />
+                    <stop offset="100%" stopColor="#3b82f6" />
+                  </linearGradient>
+                </defs>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -881,7 +928,7 @@ export default function AdminDashboard() {
 
       {/* Main content */}
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview'  && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} />}
+        {activeTab === 'overview'  && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} surveys={submittedSurveys} />}
         {activeTab === 'surveys'   && <SubmittedSurveysTab surveys={submittedSurveys} />}
         {activeTab === 'requests'  && <EditRequestsTab />}
       </main>

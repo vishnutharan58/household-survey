@@ -237,6 +237,7 @@ DECLARE
   staff_cnt INT;
   hamlet_cnt INT;
   hamlet_data JSONB;
+  hamlet_individual_data JSONB;
   doc_data JSONB;
   corr_req_cnt INT;
   new_docs_cnt INT;
@@ -255,6 +256,16 @@ BEGIN
     SELECT COALESCE(hamlet_code, 'Unknown') as hamlet_code, count(*) as cnt
     FROM public.households
     GROUP BY hamlet_code
+  ) h;
+
+  -- Hamlet-wise individuals
+  SELECT jsonb_agg(jsonb_build_object('name', hamlet_code, 'count', cnt))
+  INTO hamlet_individual_data
+  FROM (
+    SELECT COALESCE(h.hamlet_code, 'Unknown') as hamlet_code, count(m.id) as cnt
+    FROM public.households h
+    LEFT JOIN public.members m ON h.id = m.household_id
+    GROUP BY h.hamlet_code
   ) h;
 
   -- Document availability counts
@@ -321,6 +332,7 @@ BEGIN
     'active_staff_count', staff_cnt,
     'hamlets_covered_count', hamlet_cnt,
     'hamlet_counts', COALESCE(hamlet_data, '[]'::jsonb),
+    'hamlet_individual_counts', COALESCE(hamlet_individual_data, '[]'::jsonb),
     'document_counts', COALESCE(doc_data, '[]'::jsonb),
     'total_corrections_required', corr_req_cnt,
     'total_corrections_made', 0,
