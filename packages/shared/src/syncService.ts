@@ -22,6 +22,9 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
       economic_status: draft.household.economic_status,
       religion: draft.household.religion,
       community: draft.household.community,
+      lamination: draft.household.lamination ?? false,
+      e_sevai_service_charges: draft.household.e_sevai_service_charges ?? false,
+      digital_safety_measures: draft.household.digital_safety_measures ?? false,
       remarks: draft.household.remarks
     }])
     .select('id')

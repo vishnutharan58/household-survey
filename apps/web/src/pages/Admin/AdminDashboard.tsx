@@ -147,6 +147,29 @@ function SurveyDetailPanel({ survey, onClose }: { survey: DraftSurvey; onClose: 
             )}
           </Section>
 
+          <Section id="other_services" title="🛠️ Other Services">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                <span style={{ color: '#475569' }}>Lamination</span>
+                <span style={{ fontWeight: 600, color: survey.household.lamination ? '#10b981' : '#94a3b8' }}>
+                  {survey.household.lamination ? 'Yes' : 'No'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                <span style={{ color: '#475569' }}>E-Sevai Service Charges</span>
+                <span style={{ fontWeight: 600, color: survey.household.e_sevai_service_charges ? '#10b981' : '#64748b' }}>
+                  {survey.household.e_sevai_service_charges ? 'Yes' : 'No'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                <span style={{ color: '#475569' }}>Digital Safety Measures</span>
+                <span style={{ fontWeight: 600, color: survey.household.digital_safety_measures ? '#10b981' : '#64748b' }}>
+                  {survey.household.digital_safety_measures ? 'Yes' : 'No'}
+                </span>
+              </div>
+            </div>
+          </Section>
+
           {survey.members.map((member, i) => (
             <Section key={member.id} id={`member-${i}`} title={`👤 ${member.name || `Member ${i + 1}`}`}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px', marginBottom: '10px' }}>
@@ -404,6 +427,9 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
       'Date': s.household.date || '',
       'Economic Status': s.household.economic_status || '',
       'Members': s.members.length,
+      'Lamination': s.household.lamination ? 'Yes' : 'No',
+      'E-Sevai Charges': s.household.e_sevai_service_charges ? 'Yes' : 'No',
+      'Digital Safety': s.household.digital_safety_measures ? 'Yes' : 'No',
       'Submitted At': new Date(s.lastSavedAt).toLocaleString(),
       'Remarks': s.household.remarks || '',
     }));

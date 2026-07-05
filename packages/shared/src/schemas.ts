@@ -18,6 +18,9 @@ export const HouseholdSchema = z.object({
   religion: z.string(),
   community: z.string(),
   remarks: z.string().optional(),
+  lamination: z.boolean().default(false),
+  e_sevai_service_charges: z.boolean().default(false),
+  digital_safety_measures: z.boolean().default(false),
 });
 
 export const MemberSchema = z.object({

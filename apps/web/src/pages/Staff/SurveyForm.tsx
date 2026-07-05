@@ -118,6 +118,7 @@ const TABS = [
   'Corrections Required',
   'New Docs Needed',
   'Base Docs & Schemes',
+  'Other Services',
   'Remarks',
   'Corrections Made'
 ];
@@ -1108,7 +1109,7 @@ export default function SurveyForm() {
             </div>
           )}
 
-          {activeTab === 7 && (
+          {activeTab === 8 && (
             <div>
               <h2 className="text-lg font-bold border-b pb-2 mb-4">Corrections Made & New Docs Obtained</h2>
               {draft.members.length === 0 ? (
@@ -1300,11 +1301,68 @@ export default function SurveyForm() {
           )}
 
           {activeTab === 6 && (
+            <div className="space-y-6">
+              <h2 className="text-lg font-bold border-b pb-2 mb-4">Other Services</h2>
+              <p className="text-sm text-gray-500 mb-4">Select the services provided to or accessed by this household.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="flex items-center gap-3 p-4 rounded-xl border bg-gray-50 hover:bg-gray-100 cursor-pointer transition-all shadow-sm">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 text-accent border-gray-300 rounded focus:ring-accent"
+                    checked={draft.household.lamination || false}
+                    onChange={e => setDraft({
+                      ...draft,
+                      household: { ...draft.household, lamination: e.target.checked }
+                    })}
+                  />
+                  <div>
+                    <span className="font-semibold text-gray-900 block text-sm">Lamination</span>
+                    <span className="text-xs text-gray-500">Lamination of documents/cards</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-4 rounded-xl border bg-gray-50 hover:bg-gray-100 cursor-pointer transition-all shadow-sm">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 text-accent border-gray-300 rounded focus:ring-accent"
+                    checked={draft.household.e_sevai_service_charges || false}
+                    onChange={e => setDraft({
+                      ...draft,
+                      household: { ...draft.household, e_sevai_service_charges: e.target.checked }
+                    })}
+                  />
+                  <div>
+                    <span className="font-semibold text-gray-900 block text-sm">E-Sevai Service Charges</span>
+                    <span className="text-xs text-gray-500">Charges for online government service portal submissions</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-4 rounded-xl border bg-gray-50 hover:bg-gray-100 cursor-pointer transition-all shadow-sm">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 text-accent border-gray-300 rounded focus:ring-accent"
+                    checked={draft.household.digital_safety_measures || false}
+                    onChange={e => setDraft({
+                      ...draft,
+                      household: { ...draft.household, digital_safety_measures: e.target.checked }
+                    })}
+                  />
+                  <div>
+                    <span className="font-semibold text-gray-900 block text-sm">Digital Safety Measures</span>
+                    <span className="text-xs text-gray-500">Awareness and implementation of safety precautions online</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 7 && (
             <div>
               <h2 className="text-lg font-bold border-b pb-2 mb-4">Remarks</h2>
               <textarea
                 className="w-full border rounded-md p-3 h-32"
-                placeholder="Enter any additional observations..."
+                placeholder="Enter any observations..."
                 value={draft.household.remarks || ''}
                 onChange={e => setDraft({ ...draft, household: { ...draft.household, remarks: e.target.value } })}
               ></textarea>

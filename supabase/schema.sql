@@ -21,6 +21,9 @@ CREATE TABLE public.households (
   economic_status economic_status_enum,
   religion TEXT,
   community TEXT,
+  lamination BOOLEAN DEFAULT FALSE,
+  e_sevai_service_charges BOOLEAN DEFAULT FALSE,
+  digital_safety_measures BOOLEAN DEFAULT FALSE,
   remarks TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
