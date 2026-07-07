@@ -1258,7 +1258,22 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
     { label: 'Staff', value: STAFF_DETAILS.length.toString(), icon: Users, colorClass: 'purple', iconBg: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', trend: `${hamletsCovered} hamlets covered`, clickable: true },
   ];
 
-  const hamletData = stats.hamlet_counts || [];
+  // Helper to sort by hamlet code in increasing numeric order (e.g. 1.1 -> 2.1 -> 10.1)
+  const sortHamlets = (a: { name: string }, b: { name: string }) => {
+    if (a.name === 'Unknown' || a.name === 'No Data') return 1;
+    if (b.name === 'Unknown' || b.name === 'No Data') return -1;
+    const aParts = a.name.split('.').map(Number);
+    const bParts = b.name.split('.').map(Number);
+    for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+      const aVal = aParts[i] ?? 0;
+      const bVal = bParts[i] ?? 0;
+      if (aVal !== bVal) return aVal - bVal;
+    }
+    return 0;
+  };
+
+  const hamletDataRaw = stats.hamlet_counts || [];
+  const hamletData = [...hamletDataRaw].sort(sortHamlets);
   if (hamletData.length === 0) hamletData.push({ name: 'No Data', count: 0 });
 
   const docData = (stats.document_counts || []).map((d: any) => ({ name: d.name.replace(/_/g, ' '), value: d.value }));
@@ -1281,7 +1296,7 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
 
   const hamletIndividualData = Object.entries(hamletIndividualsMap)
     .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
+    .sort(sortHamlets);
 
   if (hamletIndividualData.length === 0) {
     hamletIndividualData.push({ name: 'No Data', count: 0 });
