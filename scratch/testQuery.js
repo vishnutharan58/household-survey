@@ -14,16 +14,24 @@ async function test() {
   }
   console.log('Auth success!');
 
-  // Test households with member count query
+  const userEmail = 'suganya@staff.com';
+  const staffPrefix = userEmail.split('@')[0];
+  const staffNameCapitalized = staffPrefix.charAt(0).toUpperCase() + staffPrefix.slice(1);
+  const hamlet_code = '1.1';
+
+  console.log('Running query with staff prefix:', staffPrefix, 'capitalized:', staffNameCapitalized);
+
   const { data, error } = await supabase
     .from('households')
-    .select('id, household_number, hamlet_code, staff_name, date, economic_status, members(count)')
-    .limit(5);
+    .select('id, household_number, hamlet_code, staff_name, date, created_at')
+    .eq('hamlet_code', hamlet_code)
+    .or(`staff_name.eq."${userEmail}",staff_name.eq."${staffNameCapitalized}",staff_name.eq."${staffPrefix}"`);
 
   if (error) {
-    console.error('Query error:', error.message);
+    console.error('Query error:', error.message, error.details, error.hint);
   } else {
-    console.log('Result data:', JSON.stringify(data, null, 2));
+    console.log('Result data length:', data.length);
+    console.log('Sample data:', data.slice(0, 2));
   }
 }
 
