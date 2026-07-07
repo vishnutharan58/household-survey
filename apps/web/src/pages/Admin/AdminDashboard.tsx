@@ -1228,9 +1228,20 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
     );
   }
 
+  // Calculate other services count dynamically from synced surveys as fallback
+  let otherServicesCount = stats.total_other_services_needed || 0;
+  if (otherServicesCount === 0 && surveys && surveys.length > 0) {
+    surveys.forEach(s => {
+      if (s.household?.lamination) otherServicesCount++;
+      if (s.household?.e_sevai_service_charges) otherServicesCount++;
+      if (s.household?.digital_safety_measures) otherServicesCount++;
+    });
+  }
+
   const progressData = [
     { name: 'Corrections', Required: stats.total_corrections_required, Completed: stats.total_corrections_made },
     { name: 'New Docs', Required: stats.total_new_docs_needed, Completed: stats.total_new_docs_obtained },
+    { name: 'Other Services', Required: otherServicesCount, Completed: stats.total_other_services_obtained || 0 },
   ];
 
   // Dynamic calculations

@@ -244,6 +244,7 @@ DECLARE
   doc_data JSONB;
   corr_req_cnt INT;
   new_docs_cnt INT;
+  other_services_cnt INT;
 BEGIN
   -- Basic counts
   SELECT count(*) INTO total_hh FROM public.households;
@@ -328,6 +329,14 @@ BEGIN
   ) INTO new_docs_cnt
   FROM public.new_documents_needed;
 
+  -- Count total times any other service is ticked
+  SELECT COALESCE(
+    (SELECT count(1) FROM public.households WHERE lamination) +
+    (SELECT count(1) FROM public.households WHERE e_sevai_service_charges) +
+    (SELECT count(1) FROM public.households WHERE digital_safety_measures),
+    0
+  ) INTO other_services_cnt;
+
   result := jsonb_build_object(
     'total_households', total_hh,
     'total_members', total_mem,
@@ -340,7 +349,9 @@ BEGIN
     'total_corrections_required', corr_req_cnt,
     'total_corrections_made', 0,
     'total_new_docs_needed', new_docs_cnt,
-    'total_new_docs_obtained', 0
+    'total_new_docs_obtained', 0,
+    'total_other_services_needed', other_services_cnt,
+    'total_other_services_obtained', 0
   );
 
   RETURN result;
