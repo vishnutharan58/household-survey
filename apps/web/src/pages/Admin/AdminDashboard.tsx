@@ -1238,14 +1238,13 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
   const totalMembers = stats.total_members;
   const bplCount = stats.bpl_count;
   const bplPercent = totalHouseholds > 0 ? ((bplCount / totalHouseholds) * 100).toFixed(1) : 0;
-  const activeStaff = stats.active_staff_count;
   const hamletsCovered = stats.hamlets_covered_count;
 
   const statCards = [
     { label: 'Total Households', value: totalHouseholds.toString(), icon: Home, colorClass: 'blue', iconBg: 'linear-gradient(135deg,#3b82f6,#60a5fa)', trend: 'Overall' },
     { label: 'Total Members', value: totalMembers.toString(), icon: Users, colorClass: 'green', iconBg: 'linear-gradient(135deg,#10b981,#34d399)', trend: 'Overall' },
     { label: 'BPL Count', value: bplCount.toString(), icon: AlertTriangle, colorClass: 'amber', iconBg: 'linear-gradient(135deg,#f59e0b,#fbbf24)', trend: `${bplPercent}% of total` },
-    { label: 'Active Staff', value: activeStaff.toString(), icon: Users, colorClass: 'purple', iconBg: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', trend: `${hamletsCovered} hamlets covered`, clickable: true },
+    { label: 'Staff', value: STAFF_DETAILS.length.toString(), icon: Users, colorClass: 'purple', iconBg: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', trend: `${hamletsCovered} hamlets covered`, clickable: true },
   ];
 
   const hamletData = stats.hamlet_counts || [];
