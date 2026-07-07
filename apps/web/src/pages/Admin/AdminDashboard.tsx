@@ -1322,7 +1322,7 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
         <div className="chart-card">
           <h2 className="section-title">
             <span style={{ width: '6px', height: '22px', borderRadius: '3px', background: 'linear-gradient(#1B3A5C,#2A9D8F)', display: 'inline-block' }} />
@@ -1506,7 +1506,7 @@ export default function AdminDashboard() {
                 }}
               >
                 <Icon size={15} />
-                {label}
+                <span className="hidden sm:inline">{label}</span>
                 {badge != null && badge > 0 && (
                   <span style={{
                     background: '#2A9D8F', color: 'white',
@@ -1526,7 +1526,7 @@ export default function AdminDashboard() {
               <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg,#2A9D8F,#1B3A5C)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, color: 'white' }}>
                 {user?.email?.[0]?.toUpperCase() ?? 'A'}
               </div>
-              <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="hidden sm:inline">
                 {user?.email}
               </span>
             </div>
