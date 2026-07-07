@@ -28,29 +28,10 @@ export default function StaffDashboard() {
 
   // Auto-initialize hamlet_code if it is not in the user's assigned hamlets list (e.g. placeholder 'HAM-001')
   useEffect(() => {
-    const autoInitializeHamlet = async () => {
-      if (!user?.email || staffHamlets.length === 0) return;
-      if (!hamlet_code || !staffHamlets.includes(hamlet_code)) {
-        const defaultHamlet = staffHamlets[0];
-        setHamletCode(defaultHamlet);
-        try {
-          const supabase = getSupabase();
-          const { error: updateErr } = await supabase.auth.updateUser({ data: { hamlet_code: defaultHamlet } });
-          if (updateErr) throw updateErr;
-
-          const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
-          if (refreshErr) throw refreshErr;
-
-          if (refreshData.session) {
-            useAuthStore.getState().setAuth(refreshData.session);
-          }
-        } catch (err) {
-          console.error('Failed to auto-initialize hamlet code:', err);
-        }
-      }
-    };
-
-    autoInitializeHamlet();
+    if (!user?.email || staffHamlets.length === 0) return;
+    if (!hamlet_code || !staffHamlets.includes(hamlet_code)) {
+      setHamletCode(staffHamlets[0]);
+    }
   }, [user?.email, hamlet_code, staffHamlets, setHamletCode]);
 
   useEffect(() => {
@@ -282,24 +263,9 @@ export default function StaffDashboard() {
                     {staffHamlets.map(code => (
                       <button
                         key={code}
-                        onClick={async () => {
+                        onClick={() => {
                           setHamletCode(code);
                           setHamletOpen(false);
-                          try {
-                            const supabase = getSupabase();
-                            const { error: updateErr } = await supabase.auth.updateUser({ data: { hamlet_code: code } });
-                            if (updateErr) throw updateErr;
-
-                            // Refresh session to obtain a new JWT token containing the updated hamlet_code claim
-                            const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
-                            if (refreshErr) throw refreshErr;
-
-                            if (refreshData.session) {
-                              useAuthStore.getState().setAuth(refreshData.session);
-                            }
-                          } catch (err) {
-                            console.error('Failed to update hamlet on server:', err);
-                          }
                         }}
                         style={{
                           padding: '6px 14px',

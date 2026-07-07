@@ -177,37 +177,39 @@ CREATE POLICY "Admin full access households"
 CREATE POLICY "Staff hamlet access households"
   ON public.households
   FOR ALL
-  USING (hamlet_code = (auth.jwt() -> 'user_metadata' ->> 'hamlet_code'));
+  USING (
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'staff'
+  );
 
 -- Cascading policies for child tables based on households (for staff and admin)
 
 -- MEMBERS
 CREATE POLICY "Admin full access members" ON public.members FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "Staff hamlet access members" ON public.members FOR ALL USING (EXISTS (SELECT 1 FROM public.households h WHERE h.id = public.members.household_id AND h.hamlet_code = (auth.jwt() -> 'user_metadata' ->> 'hamlet_code')));
+CREATE POLICY "Staff hamlet access members" ON public.members FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'staff');
 
 -- DOCUMENTS
 CREATE POLICY "Admin full access documents" ON public.documents FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "Staff hamlet access documents" ON public.documents FOR ALL USING (EXISTS (SELECT 1 FROM public.members m JOIN public.households h ON h.id = m.household_id WHERE m.id = public.documents.member_id AND h.hamlet_code = (auth.jwt() -> 'user_metadata' ->> 'hamlet_code')));
+CREATE POLICY "Staff hamlet access documents" ON public.documents FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'staff');
 
 -- CORRECTIONS REQUIRED
 CREATE POLICY "Admin full access corrections_required" ON public.corrections_required FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "Staff hamlet access corrections_required" ON public.corrections_required FOR ALL USING (EXISTS (SELECT 1 FROM public.members m JOIN public.households h ON h.id = m.household_id WHERE m.id = public.corrections_required.member_id AND h.hamlet_code = (auth.jwt() -> 'user_metadata' ->> 'hamlet_code')));
+CREATE POLICY "Staff hamlet access corrections_required" ON public.corrections_required FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'staff');
 
 -- NEW DOCUMENTS NEEDED
 CREATE POLICY "Admin full access new_documents_needed" ON public.new_documents_needed FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "Staff hamlet access new_documents_needed" ON public.new_documents_needed FOR ALL USING (EXISTS (SELECT 1 FROM public.members m JOIN public.households h ON h.id = m.household_id WHERE m.id = public.new_documents_needed.member_id AND h.hamlet_code = (auth.jwt() -> 'user_metadata' ->> 'hamlet_code')));
+CREATE POLICY "Staff hamlet access new_documents_needed" ON public.new_documents_needed FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'staff');
 
 -- BASE DOCUMENTS AVAILABLE
 CREATE POLICY "Admin full access base_documents_available" ON public.base_documents_available FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "Staff hamlet access base_documents_available" ON public.base_documents_available FOR ALL USING (EXISTS (SELECT 1 FROM public.members m JOIN public.households h ON h.id = m.household_id WHERE m.id = public.base_documents_available.member_id AND h.hamlet_code = (auth.jwt() -> 'user_metadata' ->> 'hamlet_code')));
+CREATE POLICY "Staff hamlet access base_documents_available" ON public.base_documents_available FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'staff');
 
 -- SCHEMES ACCESSED
 CREATE POLICY "Admin full access schemes_accessed" ON public.schemes_accessed FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "Staff hamlet access schemes_accessed" ON public.schemes_accessed FOR ALL USING (EXISTS (SELECT 1 FROM public.members m JOIN public.households h ON h.id = m.household_id WHERE m.id = public.schemes_accessed.member_id AND h.hamlet_code = (auth.jwt() -> 'user_metadata' ->> 'hamlet_code')));
+CREATE POLICY "Staff hamlet access schemes_accessed" ON public.schemes_accessed FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'staff');
 
 -- ELIGIBLE SCHEMES
 CREATE POLICY "Admin full access eligible_schemes" ON public.eligible_schemes FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
-CREATE POLICY "Staff hamlet access eligible_schemes" ON public.eligible_schemes FOR ALL USING (EXISTS (SELECT 1 FROM public.members m JOIN public.households h ON h.id = m.household_id WHERE m.id = public.eligible_schemes.member_id AND h.hamlet_code = (auth.jwt() -> 'user_metadata' ->> 'hamlet_code')));
+CREATE POLICY "Staff hamlet access eligible_schemes" ON public.eligible_schemes FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'staff');
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_modified_column()
