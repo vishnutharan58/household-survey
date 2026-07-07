@@ -17,6 +17,576 @@ import * as XLSX from 'xlsx';
 // ─── Chart Colors ────────────────────────────────────────────────
 const COLORS = ['#1B3A5C', '#2A9D8F', '#FFB703', '#E76F51', '#8b5cf6', '#3b82f6'];
 
+// ─── CARE Staff and Event dataset ────────────────────────────────
+const STAFF_DETAILS = [
+  {
+    sno: 1,
+    name: "REGIN MARY",
+    bloodGroup: "B+",
+    qualification: "M.S.W, B.Ed, M.A",
+    phone: "9443728367",
+    designation: "Executive Director",
+    experience: "—",
+    email: "reginmary08@gmail.com"
+  },
+  {
+    sno: 2,
+    name: "BENIT SHINY E",
+    bloodGroup: "A1+",
+    qualification: "M.A, B.Ed, M.S.W",
+    phone: "7598088250",
+    designation: "Project Manager",
+    experience: "5 years",
+    email: "shinybenit77@gmail.com"
+  },
+  {
+    sno: 3,
+    name: "BENISHA",
+    bloodGroup: "0+",
+    qualification: "M.Com, MBA",
+    phone: "6385774471",
+    designation: "Finance Manager",
+    experience: "—",
+    email: "benisharaj7@gmail.com"
+  },
+  {
+    sno: 4,
+    name: "ANISHA P",
+    bloodGroup: "A1+",
+    qualification: "B.E",
+    phone: "8778634689",
+    designation: "MIS",
+    experience: "—",
+    email: "anishasha0493@gmail.com"
+  },
+  {
+    sno: 5,
+    name: "SUGANYA D",
+    bloodGroup: "B+",
+    qualification: "B.Com",
+    phone: "9080534735",
+    designation: "Community Organizer",
+    experience: "—",
+    email: "vv6569568@gmail.com"
+  },
+  {
+    sno: 6,
+    name: "FREEDA A",
+    bloodGroup: "B+",
+    qualification: "GNM",
+    phone: "9486320020",
+    designation: "Community Organizer",
+    experience: "—",
+    email: "freedastarjanfreedastarjan6@gmail.com"
+  },
+  {
+    sno: 7,
+    name: "BERDINA",
+    bloodGroup: "0+",
+    qualification: "B.A, B.Ed",
+    phone: "9659492732",
+    designation: "Community Organizer",
+    experience: "—",
+    email: "aguvino@gmail.com"
+  },
+  {
+    sno: 8,
+    name: "SAHAYA FERNISHA P",
+    bloodGroup: "A+",
+    qualification: "B.C.A",
+    phone: "9043118227",
+    designation: "Community Organizer",
+    experience: "—",
+    email: "Nofiabiferni@gmail.com"
+  },
+  {
+    sno: 9,
+    name: "RAKSHA",
+    bloodGroup: "B+",
+    qualification: "Dt.Ed, B.A",
+    phone: "8825770973",
+    designation: "Community Organizer",
+    experience: "—",
+    email: "ifanaadvika@gmail.com"
+  }
+];
+
+const EVENT_DETAILS = [
+  {
+    sno: "1.1",
+    activity: "Baseline Study and Line Listing",
+    plannedPrograms: 1,
+    plannedParticipants: 6000,
+    achievedPrograms: 1,
+    achievedParticipants: 6528
+  },
+  {
+    sno: "1.2",
+    activity: "Formation of Community Collectives",
+    plannedPrograms: 30,
+    plannedParticipants: null,
+    achievedPrograms: 8,
+    achievedParticipants: null
+  },
+  {
+    sno: "1.3",
+    activity: "Monthly Meeting of Community Collectives",
+    plannedPrograms: 900,
+    plannedParticipants: null,
+    achievedPrograms: 13,
+    achievedParticipants: null
+  },
+  {
+    sno: "2.1",
+    activity: "Training to Social Entitlement Animators",
+    plannedPrograms: 12,
+    plannedParticipants: 360,
+    achievedPrograms: 0,
+    achievedParticipants: 0
+  },
+  {
+    sno: "2.2",
+    activity: "Experience Sharing & Peer Learning Meeting",
+    plannedPrograms: 3,
+    plannedParticipants: null,
+    achievedPrograms: 0,
+    achievedParticipants: null
+  },
+  {
+    sno: "3.1",
+    activity: "Convergence with Existing Structures & Stakeholders",
+    plannedPrograms: 18,
+    plannedParticipants: null,
+    achievedPrograms: 0,
+    achievedParticipants: null
+  },
+  {
+    sno: "3.2",
+    activity: "Interface Meetings with Administrative Heads & Elected Representatives",
+    plannedPrograms: 6,
+    plannedParticipants: null,
+    achievedPrograms: 0,
+    achievedParticipants: null
+  },
+  {
+    sno: "4.1",
+    activity: "Hand Bills and Wall Painting",
+    plannedPrograms: 3,
+    plannedParticipants: null,
+    achievedPrograms: 0,
+    achievedParticipants: null
+  },
+  {
+    sno: "4.2",
+    activity: "Mass Community Awareness Event (Rally & People’s Assembly)",
+    plannedPrograms: 2,
+    plannedParticipants: null,
+    achievedPrograms: 0,
+    achievedParticipants: null
+  },
+  {
+    sno: "4.3",
+    activity: "Inclusive Social Entitlement Camps",
+    plannedPrograms: 84,
+    plannedParticipants: null,
+    achievedPrograms: 0,
+    achievedParticipants: null
+  },
+  {
+    sno: "4.4",
+    activity: "Disaster Response / Relief to Most Marginalised",
+    plannedPrograms: 300,
+    plannedParticipants: null,
+    achievedPrograms: 0,
+    achievedParticipants: null
+  },
+  {
+    sno: "5.1",
+    activity: "Staff Capacity Building Training",
+    plannedPrograms: 8,
+    plannedParticipants: null,
+    achievedPrograms: 2,
+    achievedParticipants: null
+  },
+  {
+    sno: "5.2",
+    activity: "Inter-State Staff Exposure Visit – Karnataka",
+    plannedPrograms: 1,
+    plannedParticipants: null,
+    achievedPrograms: 0,
+    achievedParticipants: null
+  },
+  {
+    sno: "5.3",
+    activity: "Staff Review & Planning Meeting",
+    plannedPrograms: 36,
+    plannedParticipants: null,
+    achievedPrograms: 25,
+    achievedParticipants: null
+  }
+];
+
+// ─── Staff & Event Details Modal ───────────────────────────────────
+function StaffDetailsModal({ onClose }: { onClose: () => void }) {
+  const [activeTab, setActiveTab] = useState<'staff' | 'events'>('staff');
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 200,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(15,23,42,0.3)',
+        backdropFilter: 'blur(8px)',
+        padding: '20px',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '900px',
+          maxHeight: '85vh',
+          background: 'white',
+          borderRadius: '20px',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          animation: 'scaleInModal 200ms ease',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)',
+            padding: '20px 24px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            color: 'white',
+          }}
+        >
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
+              CARE Project Details
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.78rem', margin: '4px 0 0' }}>
+              Staff directory & program achievements tracking
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(255,255,255,0.12)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'white',
+              transition: 'background 150ms',
+            }}
+            onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.22)')}
+            onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Tab Selection */}
+        <div
+          style={{
+            display: 'flex',
+            borderBottom: '1px solid #f1f5f9',
+            background: '#f8fafc',
+            padding: '10px 20px',
+            gap: '8px',
+          }}
+        >
+          <button
+            onClick={() => setActiveTab('staff')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              background: activeTab === 'staff' ? '#1B3A5C' : 'transparent',
+              color: activeTab === 'staff' ? 'white' : '#64748b',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              transition: 'all 150ms',
+            }}
+          >
+            <Users size={15} />
+            Active Staff ({STAFF_DETAILS.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('events')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              background: activeTab === 'events' ? '#1B3A5C' : 'transparent',
+              color: activeTab === 'events' ? 'white' : '#64748b',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              transition: 'all 150ms',
+            }}
+          >
+            <ClipboardList size={15} />
+            Events & Achievements
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div style={{ padding: '24px', overflowY: 'auto', flex: 1, background: '#fafafa' }}>
+          {activeTab === 'staff' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px' }}>
+              {STAFF_DETAILS.map(s => (
+                <div
+                  key={s.sno}
+                  style={{
+                    background: 'white',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    padding: '16px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>
+                      {s.name}
+                    </h3>
+                    <span
+                      style={{
+                        background: '#eff6ff',
+                        color: '#1e40af',
+                        borderRadius: '4px',
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                      }}
+                    >
+                      BG: {s.bloodGroup}
+                    </span>
+                  </div>
+
+                  <p
+                    style={{
+                      fontSize: '0.78rem',
+                      color: '#64748b',
+                      fontWeight: 600,
+                      margin: 0,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    {s.designation}
+                  </p>
+
+                  <div
+                    style={{
+                      borderTop: '1px solid #f1f5f9',
+                      paddingTop: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#94a3b8' }}>Qualification:</span>
+                      <span style={{ color: '#334155', fontWeight: 500 }}>{s.qualification}</span>
+                    </div>
+                    {s.experience !== '—' && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#94a3b8' }}>Experience:</span>
+                        <span style={{ color: '#334155', fontWeight: 500 }}>{s.experience}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#94a3b8' }}>Phone:</span>
+                      <a href={`tel:${s.phone}`} style={{ color: '#2A9D8F', fontWeight: 600, textDecoration: 'none' }}>
+                        {s.phone}
+                      </a>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                      <span style={{ color: '#94a3b8' }}>Email:</span>
+                      <a
+                        href={`mailto:${s.email}`}
+                        style={{
+                          color: '#2A9D8F',
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          wordBreak: 'break-all',
+                        }}
+                      >
+                        {s.email}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+                overflow: 'hidden',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+              }}
+            >
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: 700 }}>
+                      <th style={{ padding: '12px 16px', width: '60px' }}>Sl.no</th>
+                      <th style={{ padding: '12px 16px' }}>Programme / Activity</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: '120px' }}>Planned</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: '120px' }}>Achieved</th>
+                      <th style={{ padding: '12px 16px', width: '180px' }}>Status / Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {EVENT_DETAILS.map((e, idx) => {
+                      const hasPlanned = e.plannedPrograms != null;
+                      const hasAchieved = e.achievedPrograms != null;
+                      const plannedVal = e.plannedPrograms || 0;
+                      const achievedVal = e.achievedPrograms || 0;
+
+                      let pct = 0;
+                      if (hasPlanned && plannedVal > 0) {
+                        pct = Math.min(Math.round((achievedVal / plannedVal) * 100), 100);
+                      }
+
+                      const isComplete = pct === 100;
+                      const isStarted = pct > 0;
+
+                      // Format participants targets for specific row
+                      const hasParticipants = e.plannedParticipants != null || e.achievedParticipants != null;
+                      const partPlanned = e.plannedParticipants || 0;
+                      const partAchieved = e.achievedParticipants || 0;
+
+                      return (
+                        <tr
+                          key={idx}
+                          style={{
+                            borderBottom: '1px solid #f1f5f9',
+                            background: idx % 2 === 0 ? 'white' : '#fafafa',
+                          }}
+                        >
+                          <td style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b' }}>{e.sno}</td>
+                          <td style={{ padding: '12px 16px', color: '#1e293b', fontWeight: 500 }}>
+                            <div>{e.activity}</div>
+                            {hasParticipants && (
+                              <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                                Participants Target: {partPlanned} planned &nbsp;·&nbsp; {partAchieved} achieved
+                              </div>
+                            )}
+                          </td>
+                          <td
+                            style={{
+                              padding: '12px 16px',
+                              textAlign: 'center',
+                              color: '#475569',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {hasPlanned ? plannedVal : '—'}
+                          </td>
+                          <td
+                            style={{
+                              padding: '12px 16px',
+                              textAlign: 'center',
+                              color: hasAchieved ? '#0f172a' : '#94a3b8',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {hasAchieved ? achievedVal : '—'}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            {hasPlanned ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    color: isComplete ? '#10b981' : isStarted ? '#3b82f6' : '#64748b',
+                                  }}
+                                >
+                                  <span>{pct}%</span>
+                                  <span>
+                                    {achievedVal}/{plannedVal}
+                                  </span>
+                                </div>
+                                <div
+                                  style={{
+                                    width: '100%',
+                                    height: '6px',
+                                    background: '#e2e8f0',
+                                    borderRadius: '3px',
+                                    overflow: 'hidden',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      width: `${pct}%`,
+                                      height: '100%',
+                                      background: isComplete
+                                        ? 'linear-gradient(90deg,#10b981,#34d399)'
+                                        : 'linear-gradient(90deg,#3b82f6,#60a5fa)',
+                                      borderRadius: '3px',
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic' }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes scaleInModal {
+          from { transform: scale(0.95); opacity: 0; }
+          to   { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 
 // ─── Survey Detail Panel ────────────────────────────────────────────
 function SurveyDetailPanel({ survey, onClose }: { survey: DraftSurvey; onClose: () => void }) {
@@ -647,6 +1217,8 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
 
 // ─── Overview Tab ───────────────────────────────────────────────────
 function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => void, stats: any, loading: boolean, surveys: DraftSurvey[] }) {
+  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+
   if (loading || !stats) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '16px' }}>
@@ -673,7 +1245,7 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
     { label: 'Total Households', value: totalHouseholds.toString(), icon: Home, colorClass: 'blue', iconBg: 'linear-gradient(135deg,#3b82f6,#60a5fa)', trend: 'Overall' },
     { label: 'Total Members', value: totalMembers.toString(), icon: Users, colorClass: 'green', iconBg: 'linear-gradient(135deg,#10b981,#34d399)', trend: 'Overall' },
     { label: 'BPL Count', value: bplCount.toString(), icon: AlertTriangle, colorClass: 'amber', iconBg: 'linear-gradient(135deg,#f59e0b,#fbbf24)', trend: `${bplPercent}% of total` },
-    { label: 'Active Staff', value: activeStaff.toString(), icon: Users, colorClass: 'purple', iconBg: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', trend: `${hamletsCovered} hamlets covered` },
+    { label: 'Active Staff', value: activeStaff.toString(), icon: Users, colorClass: 'purple', iconBg: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', trend: `${hamletsCovered} hamlets covered`, clickable: true },
   ];
 
   const hamletData = stats.hamlet_counts || [];
@@ -718,8 +1290,15 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
       </div>
 
       <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '28px' }}>
-        {statCards.map(({ label, value, icon: Icon, colorClass, iconBg, trend }) => (
-          <div key={label} className={`stat-card ${colorClass} animate-fade-in-up`}>
+        {statCards.map(({ label, value, icon: Icon, colorClass, iconBg, trend, clickable }) => (
+          <div
+            key={label}
+            className={`stat-card ${colorClass} animate-fade-in-up`}
+            style={clickable ? { cursor: 'pointer', transition: 'transform 200ms ease, box-shadow 200ms ease' } : {}}
+            onClick={clickable ? () => setIsStaffModalOpen(true) : undefined}
+            onMouseOver={clickable ? e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.08)'; } : undefined}
+            onMouseOut={clickable ? e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; } : undefined}
+          >
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
                 <Icon size={22} color="white" />
@@ -823,6 +1402,9 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
           </div>
         </div>
       </div>
+      {isStaffModalOpen && (
+        <StaffDetailsModal onClose={() => setIsStaffModalOpen(false)} />
+      )}
     </div>
   );
 }
