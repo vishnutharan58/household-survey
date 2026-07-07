@@ -60,14 +60,10 @@ export default function StaffDashboard() {
       try {
         const supabase = getSupabase();
         
-        const staffPrefix = user.email.split('@')[0];
-        const staffNameCapitalized = staffPrefix.charAt(0).toUpperCase() + staffPrefix.slice(1);
-
         const { data, error } = await supabase
           .from('households')
           .select('id, household_number, hamlet_code, staff_name, date, created_at')
-          .eq('hamlet_code', hamlet_code)
-          .or(`staff_name.eq."${user.email}",staff_name.eq."${staffNameCapitalized}",staff_name.eq."${staffPrefix}"`);
+          .eq('hamlet_code', hamlet_code);
 
         if (error) throw error;
         
