@@ -164,7 +164,7 @@ async function main() {
       const { data, error: selectErr } = await supabase
         .from(table)
         .select('id')
-        .limit(2000);
+        .limit(200);
       
       if (selectErr) {
         console.error(`Failed to select from ${table}:`, selectErr.message);
@@ -180,7 +180,7 @@ async function main() {
         .in('id', ids);
         
       if (deleteErr) {
-        console.error(`Failed to delete from ${table}:`, deleteErr.message);
+        console.error(`Failed to delete from ${table}:`, deleteErr);
         process.exit(1);
       }
       deletedCount += ids.length;
