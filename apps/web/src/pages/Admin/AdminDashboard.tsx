@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useAuthStore, useDraftStore, useEditRequestStore, fetchAdminSurveys, fetchDashboardStats, fetchSurveyDetail } from '@pro-vision-care/shared';
+import { useAuthStore, useDraftStore, useEditRequestStore, fetchAdminSurveys, fetchDashboardStats, fetchSurveyDetail, getSupabase } from '@pro-vision-care/shared';
 import type { DraftSurvey } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
 import {
   LogOut, Download, Users, Home, AlertTriangle, TrendingUp,
   LayoutDashboard, ClipboardList, Search, Eye, X, MapPin,
   CalendarDays, User2, FileCheck2, ChevronDown, ChevronUp,
-  Pencil, CheckCheck, XCircle, Clock, Bell, ChevronLeft, ChevronRight
+  Pencil, CheckCheck, XCircle, Clock, Bell, ChevronLeft, ChevronRight,
+  PlusCircle, Trash2, UploadCloud
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -225,10 +226,521 @@ const EVENT_DETAILS = [
     achievedParticipants: null
   }
 ];
+// ─── Image Upload Utility with Base64 Fallback ──────────────────────
+const uploadEventImage = async (file: File, eventId: string): Promise<string> => {
+  try {
+    const supabase = getSupabase() as any;
+    const fileExt = file.name.split('.').pop();
+    const filePath = `event-${eventId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('event-images')
+      .upload(filePath, file);
+      
+    if (uploadError) throw uploadError;
+    
+    const { data } = supabase.storage
+      .from('event-images')
+      .getPublicUrl(filePath);
+      
+    return data.publicUrl;
+  } catch (err) {
+    console.warn("Supabase storage upload failed, falling back to Base64:", err);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+};
+
+// ─── DB & UI Entity Mapping Helpers ─────────────────────────────────
+const mapDbEventToUi = (db: any) => ({
+  id: db.id,
+  sno: db.sno,
+  activity: db.activity,
+  plannedPrograms: db.planned_programs,
+  achievedPrograms: db.achieved_programs,
+  plannedParticipants: db.planned_participants,
+  achievedParticipants: db.achieved_participants,
+  images: db.images || []
+});
+
+const mapUiEventToDb = (ui: any) => ({
+  sno: ui.sno,
+  activity: ui.activity,
+  planned_programs: ui.plannedPrograms || 0,
+  achieved_programs: ui.achievedPrograms || 0,
+  planned_participants: ui.plannedParticipants || 0,
+  achieved_participants: ui.achievedParticipants || 0,
+  images: ui.images || []
+});
+
+// ─── Sub-Modal: EditEventModal ──────────────────────────────────────
+interface EditEventModalProps {
+  event: any | null;
+  onClose: () => void;
+  onSave: (data: any) => void;
+}
+
+function EditEventModal({ event, onClose, onSave }: EditEventModalProps) {
+  const [sno, setSno] = useState(event?.sno || '');
+  const [activity, setActivity] = useState(event?.activity || '');
+  const [plannedPrograms, setPlannedPrograms] = useState(event?.plannedPrograms?.toString() || '0');
+  const [achievedPrograms, setAchievedPrograms] = useState(event?.achievedPrograms?.toString() || '0');
+  const [plannedParticipants, setPlannedParticipants] = useState(event?.plannedParticipants?.toString() || '');
+  const [achievedParticipants, setAchievedParticipants] = useState(event?.achievedParticipants?.toString() || '');
+  const [images, setImages] = useState<string[]>(event?.images || []);
+  const [uploading, setUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const remainingSlots = 3 - images.length;
+    if (remainingSlots <= 0) {
+      alert("Maximum 3 images can be uploaded.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const newImages = [...images];
+      const eventId = event?.id || 'temp-' + Date.now();
+      
+      const uploadCount = Math.min(files.length, remainingSlots);
+      for (let i = 0; i < uploadCount; i++) {
+        const url = await uploadEventImage(files[i], eventId);
+        newImages.push(url);
+      }
+      setImages(newImages);
+    } catch (err) {
+      console.error("Failed to upload image:", err);
+      alert("Failed to upload image.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveImage = (idx: number) => {
+    setImages(images.filter((_, i) => i !== idx));
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sno || !activity) {
+      alert("Sl.no and Programme / Activity are required.");
+      return;
+    }
+    
+    onSave({
+      ...event,
+      sno,
+      activity,
+      plannedPrograms: parseInt(plannedPrograms, 10) || 0,
+      achievedPrograms: parseInt(achievedPrograms, 10) || 0,
+      plannedParticipants: plannedParticipants !== '' ? parseInt(plannedParticipants, 10) : null,
+      achievedParticipants: achievedParticipants !== '' ? parseInt(achievedParticipants, 10) : null,
+      images,
+    });
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 300,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(15,23,42,0.4)',
+        backdropFilter: 'blur(10px)',
+        padding: '20px',
+      }}
+      onClick={onClose}
+    >
+      <form
+        onSubmit={handleFormSubmit}
+        style={{
+          width: '100%',
+          maxWidth: '520px',
+          background: 'white',
+          borderRadius: '20px',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          animation: 'scaleInModal 200ms ease',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)',
+            padding: '18px 24px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            color: 'white',
+          }}
+        >
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
+            {event ? '📝 Edit Programme / Activity' : '➕ Add Programme / Activity'}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: 'rgba(255,255,255,0.12)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'white',
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', maxHeight: '70vh' }}>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Sl. No</label>
+              <input
+                type="text"
+                placeholder="1.1"
+                value={sno}
+                onChange={e => setSno(e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px',
+                  fontSize: '0.86rem', outline: 'none', background: '#f8fafc',
+                }}
+                onFocus={e => (e.target.style.borderColor = '#2A9D8F')}
+                onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Programme / Activity Name</label>
+              <input
+                type="text"
+                placeholder="Enter event or activity description..."
+                value={activity}
+                onChange={e => setActivity(e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px',
+                  fontSize: '0.86rem', outline: 'none',
+                }}
+                onFocus={e => (e.target.style.borderColor = '#2A9D8F')}
+                onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Planned Programs</label>
+              <input
+                type="number"
+                value={plannedPrograms}
+                onChange={e => setPlannedPrograms(e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px',
+                  fontSize: '0.86rem', outline: 'none',
+                }}
+                onFocus={e => (e.target.style.borderColor = '#2A9D8F')}
+                onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Achieved Programs</label>
+              <input
+                type="number"
+                value={achievedPrograms}
+                onChange={e => setAchievedPrograms(e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px',
+                  fontSize: '0.86rem', outline: 'none',
+                }}
+                onFocus={e => (e.target.style.borderColor = '#2A9D8F')}
+                onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Planned Participants</label>
+              <input
+                type="number"
+                placeholder="e.g. 6000 (optional)"
+                value={plannedParticipants}
+                onChange={e => setPlannedParticipants(e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px',
+                  fontSize: '0.86rem', outline: 'none',
+                }}
+                onFocus={e => (e.target.style.borderColor = '#2A9D8F')}
+                onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Achieved Participants</label>
+              <input
+                type="number"
+                placeholder="e.g. 6528 (optional)"
+                value={achievedParticipants}
+                onChange={e => setAchievedParticipants(e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px',
+                  fontSize: '0.86rem', outline: 'none',
+                }}
+                onFocus={e => (e.target.style.borderColor = '#2A9D8F')}
+                onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+              />
+            </div>
+          </div>
+
+          {/* Image Upload Area */}
+          <div>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+              Event Images (Max 3)
+            </label>
+            
+            {/* Gallery of Uploaded Images */}
+            {images.length > 0 && (
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                {images.map((url, idx) => (
+                  <div key={idx} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                    <img src={url} alt="Event" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(idx)}
+                      style={{
+                        position: 'absolute', top: '4px', right: '4px',
+                        background: 'rgba(239, 68, 68, 0.9)', color: 'white',
+                        border: 'none', borderRadius: '50%',
+                        width: '20px', height: '20px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload Button */}
+            {images.length < 3 && (
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  disabled={uploading}
+                  style={{ display: 'none' }}
+                  id="event-image-input"
+                />
+                <label
+                  htmlFor="event-image-input"
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    padding: '20px', border: '2px dashed #cbd5e1', borderRadius: '12px',
+                    cursor: uploading ? 'not-allowed' : 'pointer', background: '#f8fafc',
+                    transition: 'all 150ms', gap: '6px'
+                  }}
+                  onMouseOver={e => !uploading && (e.currentTarget.style.borderColor = '#2A9D8F')}
+                  onMouseOut={e => !uploading && (e.currentTarget.style.borderColor = '#cbd5e1')}
+                >
+                  {uploading ? (
+                    <>
+                      <div className="animate-spin" style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid rgba(42,157,143,0.2)', borderTopColor: '#2A9D8F' }} />
+                      <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud size={24} color="#64748b" />
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569' }}>
+                        Click to upload images
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                        Up to {3 - images.length} more image{3 - images.length > 1 ? 's' : ''} (JPG, PNG)
+                      </span>
+                    </>
+                  )}
+                </label>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ background: '#f8fafc', padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', border: '1.5px solid #e2e8f0',
+              background: 'white', color: '#64748b', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            style={{
+              padding: '8px 20px', borderRadius: '8px', border: 'none',
+              background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', color: 'white',
+              fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(42,157,143,0.2)',
+            }}
+          >
+            Save Event
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
 
 // ─── Staff & Event Details Modal ───────────────────────────────────
 function StaffDetailsModal({ onClose }: { onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<'staff' | 'events'>('staff');
+  const [eventsList, setEventsList] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [isUsingDb, setIsUsingDb] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      setLoadingEvents(true);
+      try {
+        const supabase = getSupabase() as any;
+        const { data, error } = await supabase.from('events').select('*').order('created_at', { ascending: true });
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setEventsList(data.map(mapDbEventToUi));
+          setIsUsingDb(true);
+        } else {
+          console.log("Database events table is empty. Seeding it...");
+          try {
+            const seedData = EVENT_DETAILS.map(e => ({
+              sno: e.sno,
+              activity: e.activity,
+              planned_programs: e.plannedPrograms || 0,
+              achieved_programs: e.achievedPrograms || 0,
+              planned_participants: e.plannedParticipants || 0,
+              achieved_participants: e.achievedParticipants || 0,
+              images: []
+            }));
+            const { error: seedError } = await supabase.from('events').insert(seedData);
+            if (seedError) throw seedError;
+            
+            const { data: refetched } = await supabase.from('events').select('*').order('created_at', { ascending: true });
+            setEventsList((refetched || []).map(mapDbEventToUi));
+          } catch (seedErr) {
+            console.error("Failed to seed database events:", seedErr);
+            setEventsList(EVENT_DETAILS);
+          }
+          setIsUsingDb(true);
+        }
+      } catch (err) {
+        console.warn("Supabase events table check failed, falling back to localStorage:", err);
+        const local = localStorage.getItem('care_portal_events');
+        if (local) {
+          setEventsList(JSON.parse(local));
+        } else {
+          setEventsList(EVENT_DETAILS);
+          localStorage.setItem('care_portal_events', JSON.stringify(EVENT_DETAILS));
+        }
+        setIsUsingDb(false);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    loadEvents();
+  }, []);
+
+  const handleSaveEvent = async (eventData: any) => {
+    let updatedList;
+    if (isUsingDb) {
+      const supabase = getSupabase() as any;
+      if (eventData.id) {
+        const { error } = await supabase
+          .from('events')
+          .update(mapUiEventToDb(eventData))
+          .eq('id', eventData.id);
+        if (error) {
+          console.error("Error updating event in db:", error);
+          alert("Error saving event: " + error.message);
+          return;
+        }
+        updatedList = eventsList.map(e => e.id === eventData.id ? eventData : e);
+      } else {
+        const { data, error } = await supabase
+          .from('events')
+          .insert([mapUiEventToDb(eventData)])
+          .select('*')
+          .single();
+        if (error) {
+          console.error("Error inserting event in db:", error);
+          alert("Error saving event: " + error.message);
+          return;
+        }
+        updatedList = [...eventsList, mapDbEventToUi(data)];
+      }
+    } else {
+      if (eventData.id) {
+        updatedList = eventsList.map(e => e.id === eventData.id ? eventData : e);
+      } else {
+        const newEvent = {
+          ...eventData,
+          id: Math.random().toString(36).substring(2) + Date.now().toString(36)
+        };
+        updatedList = [...eventsList, newEvent];
+      }
+      localStorage.setItem('care_portal_events', JSON.stringify(updatedList));
+    }
+    setEventsList(updatedList);
+    setIsEditModalOpen(false);
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this event?")) return;
+    
+    let updatedList;
+    if (isUsingDb) {
+      const supabase = getSupabase() as any;
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', id);
+      if (error) {
+        console.error("Error deleting event in db:", error);
+        alert("Error deleting event: " + error.message);
+        return;
+      }
+      updatedList = eventsList.filter(e => e.id !== id);
+    } else {
+      updatedList = eventsList.filter(e => (e.id || e.sno) !== id);
+      localStorage.setItem('care_portal_events', JSON.stringify(updatedList));
+    }
+    setEventsList(updatedList);
+  };
 
   return (
     <div
@@ -248,7 +760,7 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
       <div
         style={{
           width: '100%',
-          maxWidth: '900px',
+          maxWidth: '960px',
           maxHeight: '85vh',
           background: 'white',
           borderRadius: '20px',
@@ -309,6 +821,7 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
             background: '#f8fafc',
             padding: '10px 20px',
             gap: '8px',
+            alignItems: 'center',
           }}
         >
           <button
@@ -351,6 +864,33 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
             <ClipboardList size={15} />
             Events & Achievements
           </button>
+
+          {activeTab === 'events' && (
+            <div style={{ marginLeft: 'auto' }}>
+              <button
+                onClick={() => { setEditingEvent(null); setIsEditModalOpen(true); }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#2A9D8F',
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  transition: 'background 150ms',
+                  boxShadow: '0 2px 4px rgba(42,157,143,0.2)',
+                }}
+                onMouseOver={e => (e.currentTarget.style.background = '#227f74')}
+                onMouseOut={e => (e.currentTarget.style.background = '#2A9D8F')}
+              >
+                <PlusCircle size={14} /> Add Event
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Content Body */}
@@ -446,6 +986,11 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
                 </div>
               ))}
             </div>
+          ) : loadingEvents ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '12px' }}>
+              <div className="animate-spin" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid rgba(42,157,143,0.1)', borderTopColor: '#2A9D8F' }} />
+              <p style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 500 }}>Loading achievements...</p>
+            </div>
           ) : (
             <div
               style={{
@@ -457,18 +1002,21 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
               }}
             >
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: 700 }}>
                       <th style={{ padding: '12px 16px', width: '60px' }}>Sl.no</th>
                       <th style={{ padding: '12px 16px' }}>Programme / Activity</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'center', width: '120px' }}>Planned</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'center', width: '120px' }}>Achieved</th>
-                      <th style={{ padding: '12px 16px', width: '180px' }}>Status / Progress</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: '100px' }}>Planned Prog</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: '100px' }}>Achieved Prog</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: '100px' }}>Planned Part</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', width: '100px' }}>Achieved Part</th>
+                      <th style={{ padding: '12px 16px', width: '140px' }}>Status / Progress</th>
+                      <th style={{ padding: '12px 16px', width: '90px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {EVENT_DETAILS.map((e, idx) => {
+                    {eventsList.map((e, idx) => {
                       const hasPlanned = e.plannedPrograms != null;
                       const hasAchieved = e.achievedPrograms != null;
                       const plannedVal = e.plannedPrograms || 0;
@@ -482,14 +1030,12 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
                       const isComplete = pct === 100;
                       const isStarted = pct > 0;
 
-                      // Format participants targets for specific row
-                      const hasParticipants = e.plannedParticipants != null || e.achievedParticipants != null;
-                      const partPlanned = e.plannedParticipants || 0;
-                      const partAchieved = e.achievedParticipants || 0;
+                      const plannedPart = e.plannedParticipants;
+                      const achievedPart = e.achievedParticipants;
 
                       return (
                         <tr
-                          key={idx}
+                          key={e.id || e.sno || idx}
                           style={{
                             borderBottom: '1px solid #f1f5f9',
                             background: idx % 2 === 0 ? 'white' : '#fafafa',
@@ -498,31 +1044,38 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
                           <td style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b' }}>{e.sno}</td>
                           <td style={{ padding: '12px 16px', color: '#1e293b', fontWeight: 500 }}>
                             <div>{e.activity}</div>
-                            {hasParticipants && (
-                              <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
-                                Participants Target: {partPlanned} planned &nbsp;·&nbsp; {partAchieved} achieved
+                            {e.images && e.images.length > 0 && (
+                              <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                                {e.images.map((img: string, imgIdx: number) => (
+                                  <img
+                                    key={imgIdx}
+                                    src={img}
+                                    alt={`Event image ${imgIdx + 1}`}
+                                    style={{
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '4px',
+                                      objectFit: 'cover',
+                                      cursor: 'pointer',
+                                      border: '1px solid #e2e8f0',
+                                    }}
+                                    onClick={() => window.open(img, '_blank')}
+                                  />
+                                ))}
                               </div>
                             )}
                           </td>
-                          <td
-                            style={{
-                              padding: '12px 16px',
-                              textAlign: 'center',
-                              color: '#475569',
-                              fontWeight: 600,
-                            }}
-                          >
+                          <td style={{ padding: '12px 16px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>
                             {hasPlanned ? plannedVal : '—'}
                           </td>
-                          <td
-                            style={{
-                              padding: '12px 16px',
-                              textAlign: 'center',
-                              color: hasAchieved ? '#0f172a' : '#94a3b8',
-                              fontWeight: 700,
-                            }}
-                          >
+                          <td style={{ padding: '12px 16px', textAlign: 'center', color: hasAchieved ? '#0f172a' : '#94a3b8', fontWeight: 700 }}>
                             {hasAchieved ? achievedVal : '—'}
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>
+                            {plannedPart != null ? plannedPart : '—'}
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'center', color: achievedPart != null ? '#0f172a' : '#94a3b8', fontWeight: 700 }}>
+                            {achievedPart != null ? achievedPart : '—'}
                           </td>
                           <td style={{ padding: '12px 16px' }}>
                             {hasPlanned ? (
@@ -566,6 +1119,34 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
                               <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic' }}>—</span>
                             )}
                           </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <button
+                                onClick={() => { setEditingEvent(e); setIsEditModalOpen(true); }}
+                                style={{
+                                  background: 'rgba(59,130,246,0.1)', border: 'none', borderRadius: '6px',
+                                  width: '28px', height: '28px', display: 'flex', alignItems: 'center',
+                                  justifyContent: 'center', cursor: 'pointer', color: '#3b82f6',
+                                  transition: 'all 150ms',
+                                }}
+                                title="Edit Event"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteEvent(e.id || e.sno)}
+                                style={{
+                                  background: 'rgba(239,68,68,0.1)', border: 'none', borderRadius: '6px',
+                                  width: '28px', height: '28px', display: 'flex', alignItems: 'center',
+                                  justifyContent: 'center', cursor: 'pointer', color: '#ef4444',
+                                  transition: 'all 150ms',
+                                }}
+                                title="Delete Event"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -576,6 +1157,14 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
+
+      {isEditModalOpen && (
+        <EditEventModal
+          event={editingEvent}
+          onClose={() => setIsEditModalOpen(false)}
+          onSave={handleSaveEvent}
+        />
+      )}
 
       <style>{`
         @keyframes scaleInModal {

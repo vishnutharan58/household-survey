@@ -360,3 +360,53 @@ BEGIN
 END;
 $$;
 
+
+-- Create Events table
+CREATE TABLE public.events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  sno TEXT,
+  activity TEXT NOT NULL,
+  planned_programs INTEGER DEFAULT 0,
+  achieved_programs INTEGER DEFAULT 0,
+  planned_participants INTEGER DEFAULT 0,
+  achieved_participants INTEGER DEFAULT 0,
+  images TEXT[] DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS on events table
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+
+-- Policies for events
+CREATE POLICY "Allow public read access to events" ON public.events
+  FOR SELECT USING (true);
+
+CREATE POLICY "Admin full access events" ON public.events
+  FOR ALL USING (
+    auth.jwt() ->> 'role' = 'admin' OR 
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+  );
+
+CREATE TRIGGER update_events_modtime
+BEFORE UPDATE ON events
+FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
+-- Create event-images storage bucket
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('event-images', 'event-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- RLS policies for storage bucket
+CREATE POLICY "Allow public read storage event-images"
+ON storage.objects FOR SELECT USING (bucket_id = 'event-images');
+
+CREATE POLICY "Admin full access storage event-images"
+ON storage.objects FOR ALL USING (
+  bucket_id = 'event-images' AND (
+    auth.jwt() ->> 'role' = 'admin' OR 
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+  )
+);
+
+
