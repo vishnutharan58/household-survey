@@ -6,7 +6,7 @@ import {
   LogOut, Download, Users, Home, AlertTriangle, TrendingUp,
   LayoutDashboard, ClipboardList, Search, Eye, X, MapPin,
   CalendarDays, User2, FileCheck2, ChevronDown, ChevronUp,
-  Pencil, CheckCheck, XCircle, Clock, Bell
+  Pencil, CheckCheck, XCircle, Clock, Bell, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -961,6 +961,8 @@ function EditRequestsTab() {
 // ─── Submitted Surveys Tab ──────────────────────────────────────────
 function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
   const [search, setSearch] = useState('');
+  const [selectedStaff, setSelectedStaff] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedSurvey, setSelectedSurvey] = useState<DraftSurvey | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
@@ -979,15 +981,59 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
 
   const submitted = surveys;
 
+  // Extract unique staff names from the surveys
+  const uniqueStaff = Array.from(
+    new Set(submitted.map(s => s.household.staff_name).filter(Boolean))
+  ).sort() as string[];
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedStaff]);
+
   const filtered = submitted.filter(s => {
     const q = search.toLowerCase();
-    return (
+    const matchesSearch = (
       s.household.household_number?.toLowerCase().includes(q) ||
       s.household.staff_name?.toLowerCase().includes(q) ||
       s.household.hamlet_code?.toLowerCase().includes(q) ||
       s.household.economic_status?.toLowerCase().includes(q)
     );
+    const matchesStaff = selectedStaff === 'All' || s.household.staff_name === selectedStaff;
+    return matchesSearch && matchesStaff;
   });
+
+  // Pagination calculations
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+  const activePage = Math.min(currentPage, totalPages);
+  const startIdx = (activePage - 1) * itemsPerPage;
+  const endIdx = startIdx + itemsPerPage;
+  const paginatedSurveys = filtered.slice(startIdx, endIdx);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (activePage > 3) {
+        pages.push('...');
+      }
+      const start = Math.max(2, activePage - 1);
+      const end = Math.min(totalPages - 1, activePage + 1);
+      for (let i = start; i <= end; i++) {
+        if (!pages.includes(i)) pages.push(i);
+      }
+      if (activePage < totalPages - 2) {
+        pages.push('...');
+      }
+      if (!pages.includes(totalPages)) {
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
 
   const exportSurveys = () => {
     const rows = submitted.map(s => ({
@@ -1048,13 +1094,39 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
               style={{
                 paddingLeft: '32px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px',
                 border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.84rem',
-                fontFamily: 'inherit', outline: 'none', width: '260px',
+                fontFamily: 'inherit', outline: 'none', width: '240px',
                 background: 'white', color: '#1e293b',
               }}
               onFocus={e => (e.target.style.borderColor = '#2A9D8F')}
               onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
             />
           </div>
+
+          {/* Staff Filter */}
+          <div style={{ position: 'relative' }}>
+            <select
+              id="surveys-staff-filter"
+              value={selectedStaff}
+              onChange={e => setSelectedStaff(e.target.value)}
+              style={{
+                paddingLeft: '12px', paddingRight: '32px', paddingTop: '8px', paddingBottom: '8px',
+                border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.84rem',
+                fontFamily: 'inherit', outline: 'none', width: '180px',
+                background: 'white', color: '#1e293b',
+                cursor: 'pointer',
+                appearance: 'none',
+              }}
+              onFocus={e => (e.target.style.borderColor = '#2A9D8F')}
+              onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+            >
+              <option value="All">All Staff</option>
+              {uniqueStaff.map(staff => (
+                <option key={staff} value={staff}>{staff}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+          </div>
+
           <button
             id="surveys-export"
             onClick={exportSurveys}
@@ -1071,7 +1143,7 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
         <div style={{ background: 'white', borderRadius: '16px', padding: '60px 24px', textAlign: 'center', border: '1px solid #f1f5f9' }}>
           <ClipboardList size={48} color="#e2e8f0" style={{ margin: '0 auto 12px' }} />
           <p style={{ color: '#94a3b8', fontSize: '0.95rem', fontWeight: 500 }}>
-            {search ? 'No surveys match your search.' : 'No surveys submitted yet.'}
+            {search || selectedStaff !== 'All' ? 'No surveys match your filters.' : 'No surveys submitted yet.'}
           </p>
           <p style={{ color: '#cbd5e1', fontSize: '0.82rem', marginTop: '4px' }}>
             Submitted surveys from staff will appear here.
@@ -1099,14 +1171,14 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
           </div>
 
           {/* Rows */}
-          {filtered.map((survey, i) => (
+          {paginatedSurveys.map((survey, i) => (
             <div
               key={survey.id}
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr 1fr 100px 80px 120px 48px',
                 padding: '14px 20px',
-                borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none',
+                borderBottom: i < paginatedSurveys.length - 1 ? '1px solid #f8fafc' : 'none',
                 alignItems: 'center',
                 transition: 'background 150ms',
                 cursor: 'pointer',
@@ -1192,6 +1264,130 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
               </button>
             </div>
           ))}
+
+          {/* Pagination Footer */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '14px 20px',
+            background: '#f8fafc',
+            borderTop: '1px solid #f1f5f9',
+            fontSize: '0.8rem',
+            color: '#64748b',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div>
+              Showing <span style={{ fontWeight: 600, color: '#1e293b' }}>{startIdx + 1}</span> to{' '}
+              <span style={{ fontWeight: 600, color: '#1e293b' }}>{Math.min(endIdx, filtered.length)}</span> of{' '}
+              <span style={{ fontWeight: 600, color: '#1e293b' }}>{filtered.length}</span> surveys
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={activePage === 1}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '32px', height: '32px', borderRadius: '6px',
+                  border: '1.5px solid #e2e8f0', background: 'white',
+                  color: activePage === 1 ? '#cbd5e1' : '#64748b',
+                  cursor: activePage === 1 ? 'not-allowed' : 'pointer',
+                  transition: 'all 150ms',
+                }}
+                onMouseOver={e => {
+                  if (activePage !== 1) {
+                    e.currentTarget.style.borderColor = '#2A9D8F';
+                    e.currentTarget.style.color = '#2A9D8F';
+                  }
+                }}
+                onMouseOut={e => {
+                  if (activePage !== 1) {
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.color = '#64748b';
+                  }
+                }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              
+              {/* Page numbers */}
+              {getPageNumbers().map((n, idx) => {
+                if (n === '...') {
+                  return (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '32px', height: '32px', color: '#94a3b8',
+                      }}
+                    >
+                      ...
+                    </span>
+                  );
+                }
+                return (
+                  <button
+                    key={n}
+                    onClick={() => setCurrentPage(n as number)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      minWidth: '32px', height: '32px', borderRadius: '6px',
+                      border: '1.5px solid',
+                      borderColor: activePage === n ? '#2A9D8F' : '#e2e8f0',
+                      background: activePage === n ? '#2A9D8F' : 'white',
+                      color: activePage === n ? 'white' : '#64748b',
+                      fontWeight: activePage === n ? 700 : 500,
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                      padding: '0 4px',
+                    }}
+                    onMouseOver={e => {
+                      if (activePage !== n) {
+                        e.currentTarget.style.borderColor = '#2A9D8F';
+                        e.currentTarget.style.color = '#2A9D8F';
+                      }
+                    }}
+                    onMouseOut={e => {
+                      if (activePage !== n) {
+                        e.currentTarget.style.borderColor = '#e2e8f0';
+                        e.currentTarget.style.color = '#64748b';
+                      }
+                    }}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={activePage === totalPages}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '32px', height: '32px', borderRadius: '6px',
+                  border: '1.5px solid #e2e8f0', background: 'white',
+                  color: activePage === totalPages ? '#cbd5e1' : '#64748b',
+                  cursor: activePage === totalPages ? 'not-allowed' : 'pointer',
+                  transition: 'all 150ms',
+                }}
+                onMouseOver={e => {
+                  if (activePage !== totalPages) {
+                    e.currentTarget.style.borderColor = '#2A9D8F';
+                    e.currentTarget.style.color = '#2A9D8F';
+                  }
+                }}
+                onMouseOut={e => {
+                  if (activePage !== totalPages) {
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.color = '#64748b';
+                  }
+                }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
