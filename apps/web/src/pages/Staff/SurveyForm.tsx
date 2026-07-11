@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuthStore, useDraftStore, useEditRequestStore } from '@pro-vision-care/shared';
+import { useAuthStore, useDraftStore, useEditRequestStore, syncDraftToSupabase, getSupabase } from '@pro-vision-care/shared';
 import type { DraftSurvey } from '@pro-vision-care/shared';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, Send, Eye, Pencil, Lock, AlertCircle } from 'lucide-react';
@@ -235,11 +235,19 @@ export default function SurveyForm() {
     saveDraft({ ...draft, status: 'draft' });
   };
 
-  const handleSubmit = () => {
-    // Save the current draft state to the store with 'synced' status so it
-    // appears in the "Recent Submissions" section on the Staff Dashboard.
-    // (In a real app this would call the API first, then mark as synced.)
-    saveDraft({ ...draft, status: 'synced' });
+  const handleSubmit = async () => {
+    try {
+      // Sync the draft directly to Supabase
+      await syncDraftToSupabase(draft);
+      // Save locally with synced status
+      saveDraft({ ...draft, status: 'synced' });
+      alert('Survey submitted and synced successfully!');
+    } catch (err: any) {
+      console.error('Direct sync failed:', err);
+      // Fallback: save as pending_sync so it can be manually synced from the dashboard
+      saveDraft({ ...draft, status: 'pending_sync' });
+      alert('Sync failed. Saved locally. Please sync from the dashboard when online. Details: ' + err.message);
+    }
     // If this was an approved edit, clear the request so it resets
     if (id && editRequest?.status === 'approved') {
       clearRequest(id);
@@ -313,16 +321,46 @@ export default function SurveyForm() {
     });
   };
 
-  const handleCorrectionMadeToggle = (memberId: string, docId: string, subTypeId: string) => {
+  const handleCorrectionMadeToggle = async (memberId: string, docId: string, subTypeId: string) => {
+    const key = `${docId}__${subTypeId}`;
+    const memberMade = draft.corrections_made?.[memberId] || {};
+    const nextValue = !memberMade[key];
+    const newMadeForMember = { ...memberMade, [key]: nextValue };
+
+    // Update react state instantly
     setDraft(prev => {
-      const newMade = { ...prev.corrections_made };
-      if (!newMade[memberId]) newMade[memberId] = {};
-
-      const key = `${docId}__${subTypeId}`;
-      newMade[memberId][key] = !newMade[memberId][key];
-
-      return { ...prev, corrections_made: newMade };
+      const nextMadeObj = {
+        ...prev.corrections_made,
+        [memberId]: newMadeForMember
+      };
+      return { ...prev, corrections_made: nextMadeObj };
     });
+
+    // If in review mode, sync to database immediately
+    if (isReviewMode) {
+      try {
+        const supabase = getSupabase() as any;
+        const { error } = await supabase
+          .from('corrections_made')
+          .upsert({
+            member_id: memberId,
+            corrections_made: newMadeForMember
+          }, { onConflict: 'member_id' });
+
+        if (error) throw error;
+      } catch (err: any) {
+        console.error('Failed to auto-sync correction made:', err);
+        alert('Failed to sync changes to database: ' + err.message);
+        // Rollback React state
+        setDraft(prev => {
+          const nextMadeObj = {
+            ...prev.corrections_made,
+            [memberId]: { ...memberMade, [key]: memberMade[key] }
+          };
+          return { ...prev, corrections_made: nextMadeObj };
+        });
+      }
+    }
   };
 
   // Helper: how many sub-types are checked for a given member+doc
@@ -1110,7 +1148,7 @@ export default function SurveyForm() {
           )}
 
           {activeTab === 8 && (
-            <div>
+            <div style={{ pointerEvents: 'auto', userSelect: 'auto' }}>
               <h2 className="text-lg font-bold border-b pb-2 mb-4">Corrections Made & New Docs Obtained</h2>
               {draft.members.length === 0 ? (
                 <p className="text-sm text-gray-500">Please add family members in Tab 2 first.</p>
@@ -1118,10 +1156,14 @@ export default function SurveyForm() {
                 <div className="space-y-6">
                   {draft.members.map(member => {
                     const memberCorrections = draft.corrections?.[member.id!] || {};
-                    const docEntries = Object.entries(memberCorrections).filter(([_, subTypes]) => !!subTypes);
+                    const docEntries = Object.entries(memberCorrections).filter(([k, subTypes]) => 
+                      !!subTypes && k !== 'id' && k !== 'member_id' && k !== 'created_at' && k !== 'updated_at'
+                    );
 
                     const memberNewDocs = draft.new_docs?.[member.id!] || {};
-                    const newDocEntries = Object.entries(memberNewDocs).filter(([_, isNeeded]) => isNeeded);
+                    const newDocEntries = Object.entries(memberNewDocs).filter(([k, isNeeded]) => 
+                      isNeeded && k !== 'id' && k !== 'member_id' && k !== 'created_at' && k !== 'updated_at'
+                    );
 
                     if (docEntries.length === 0 && newDocEntries.length === 0) {
                       return (

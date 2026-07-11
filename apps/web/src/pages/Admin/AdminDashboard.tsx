@@ -1211,7 +1211,10 @@ function SurveyDetailPanel({ survey, onClose }: { survey: DraftSurvey; onClose: 
   );
 
   const checkedDocs = (map: Record<string, boolean> = {}) =>
-    Object.entries(map).filter(([, v]) => v).map(([k]) => k.replace(/_/g, ' ')).join(', ') || '—';
+    Object.entries(map)
+      .filter(([k, v]) => v && k !== 'id' && k !== 'member_id' && k !== 'created_at' && k !== 'updated_at')
+      .map(([k]) => k.replace(/_/g, ' '))
+      .join(', ') || '—';
 
   return (
     <div style={{

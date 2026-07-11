@@ -113,6 +113,14 @@ CREATE TABLE public.base_documents_available (
   birth_certificate BOOLEAN DEFAULT FALSE
 );
 
+-- Create Corrections Made table (Per Member)
+CREATE TABLE public.corrections_made (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id UUID NOT NULL REFERENCES public.members(id) ON DELETE CASCADE UNIQUE,
+  corrections_made JSONB DEFAULT '{}'::jsonb
+);
+
+
 -- Create Schemes Accessed table (Per Member)
 CREATE TABLE public.schemes_accessed (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -165,6 +173,7 @@ ALTER TABLE public.new_documents_needed ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.base_documents_available ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.schemes_accessed ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.eligible_schemes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.corrections_made ENABLE ROW LEVEL SECURITY;
 
 -- Admins can do everything. Staff can only access their hamlet.
 -- (Assuming auth.users has a role and hamlet_code stored in raw_user_meta_data)
@@ -202,6 +211,10 @@ CREATE POLICY "Staff hamlet access new_documents_needed" ON public.new_documents
 -- BASE DOCUMENTS AVAILABLE
 CREATE POLICY "Admin full access base_documents_available" ON public.base_documents_available FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
 CREATE POLICY "Staff hamlet access base_documents_available" ON public.base_documents_available FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'staff');
+
+-- CORRECTIONS MADE
+CREATE POLICY "Admin full access corrections_made" ON public.corrections_made FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+CREATE POLICY "Staff hamlet access corrections_made" ON public.corrections_made FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'staff');
 
 -- SCHEMES ACCESSED
 CREATE POLICY "Admin full access schemes_accessed" ON public.schemes_accessed FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
@@ -245,7 +258,9 @@ DECLARE
   hamlet_individual_data JSONB;
   doc_data JSONB;
   corr_req_cnt INT;
+  corr_made_cnt INT;
   new_docs_cnt INT;
+  new_docs_obt_cnt INT;
   other_services_cnt INT;
 BEGIN
   -- Basic counts
@@ -308,6 +323,17 @@ BEGIN
     FROM public.corrections_required
   ) c_sums;
 
+  -- Corrections made (sum of keys in corrections_made not ending in '__new' with true status)
+  SELECT COALESCE(sum(made_cnt), 0) INTO corr_made_cnt
+  FROM (
+    SELECT (
+      SELECT count(1)
+      FROM jsonb_each_text(corrections_made) AS m(key, val)
+      WHERE val = 'true' AND key NOT LIKE '%__new'
+    ) as made_cnt
+    FROM public.corrections_made
+  ) m_sums;
+
   -- New documents needed (count of true columns across all records)
   SELECT COALESCE(
     sum(
@@ -331,6 +357,17 @@ BEGIN
   ) INTO new_docs_cnt
   FROM public.new_documents_needed;
 
+  -- New documents obtained (sum of keys ending in '__new' with true status)
+  SELECT COALESCE(sum(obt_cnt), 0) INTO new_docs_obt_cnt
+  FROM (
+    SELECT (
+      SELECT count(1)
+      FROM jsonb_each_text(corrections_made) AS m(key, val)
+      WHERE val = 'true' AND key LIKE '%__new'
+    ) as obt_cnt
+    FROM public.corrections_made
+  ) o_sums;
+
   -- Count total times any other service is ticked
   SELECT COALESCE(
     (SELECT count(1) FROM public.households WHERE lamination) +
@@ -349,11 +386,11 @@ BEGIN
     'hamlet_individual_counts', COALESCE(hamlet_individual_data, '[]'::jsonb),
     'document_counts', COALESCE(doc_data, '[]'::jsonb),
     'total_corrections_required', corr_req_cnt,
-    'total_corrections_made', 0,
+    'total_corrections_made', corr_made_cnt,
     'total_new_docs_needed', new_docs_cnt,
-    'total_new_docs_obtained', 0,
+    'total_new_docs_obtained', new_docs_obt_cnt,
     'total_other_services_needed', other_services_cnt,
-    'total_other_services_obtained', 0
+    'total_other_services_obtained', other_services_cnt
   );
 
   RETURN result;

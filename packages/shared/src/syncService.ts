@@ -3,35 +3,80 @@ import type { DraftSurvey } from './store';
 
 export async function syncDraftToSupabase(draft: DraftSurvey) {
   const supabase = getSupabase() as any;
+  const householdId = draft.id;
 
-  // 1. Insert household
-  const { data: hhData, error: hhError } = await supabase
+  // Check if household exists
+  const { data: existingHh, error: checkError } = await supabase
     .from('households')
-    .insert([{
-      date: draft.household.date,
-      staff_name: draft.household.staff_name,
-      hamlet_code: draft.household.hamlet_code,
-      hamlet_name: draft.household.hamlet_name,
-      household_number: draft.household.household_number,
-      individual_number: draft.household.individual_number,
-      block: draft.household.block,
-      village_panchayath: draft.household.village_panchayath,
-      village: draft.household.village,
-      door_no: draft.household.door_no,
-      street: draft.household.street,
-      economic_status: draft.household.economic_status,
-      religion: draft.household.religion,
-      community: draft.household.community,
-      lamination: draft.household.lamination ?? false,
-      e_sevai_service_charges: draft.household.e_sevai_service_charges ?? false,
-      digital_safety_measures: draft.household.digital_safety_measures ?? false,
-      remarks: draft.household.remarks
-    }])
     .select('id')
-    .single();
+    .eq('id', householdId)
+    .maybeSingle();
 
-  if (hhError) throw hhError;
-  const householdId = hhData.id;
+  if (checkError) throw checkError;
+
+  if (existingHh) {
+    // 1. Update household
+    const { error: hhError } = await supabase
+      .from('households')
+      .update({
+        date: draft.household.date,
+        staff_name: draft.household.staff_name,
+        hamlet_code: draft.household.hamlet_code,
+        hamlet_name: draft.household.hamlet_name,
+        household_number: draft.household.household_number,
+        individual_number: draft.household.individual_number,
+        block: draft.household.block,
+        village_panchayath: draft.household.village_panchayath,
+        village: draft.household.village,
+        door_no: draft.household.door_no,
+        street: draft.household.street,
+        economic_status: draft.household.economic_status,
+        religion: draft.household.religion,
+        community: draft.household.community,
+        lamination: draft.household.lamination ?? false,
+        e_sevai_service_charges: draft.household.e_sevai_service_charges ?? false,
+        digital_safety_measures: draft.household.digital_safety_measures ?? false,
+        remarks: draft.household.remarks
+      })
+      .eq('id', householdId);
+
+    if (hhError) throw hhError;
+
+    // 2. Delete existing members (cascades to child tables)
+    const { error: deleteMemError } = await supabase
+      .from('members')
+      .delete()
+      .eq('household_id', householdId);
+
+    if (deleteMemError) throw deleteMemError;
+  } else {
+    // 1. Insert new household
+    const { error: hhError } = await supabase
+      .from('households')
+      .insert([{
+        id: householdId,
+        date: draft.household.date,
+        staff_name: draft.household.staff_name,
+        hamlet_code: draft.household.hamlet_code,
+        hamlet_name: draft.household.hamlet_name,
+        household_number: draft.household.household_number,
+        individual_number: draft.household.individual_number,
+        block: draft.household.block,
+        village_panchayath: draft.household.village_panchayath,
+        village: draft.household.village,
+        door_no: draft.household.door_no,
+        street: draft.household.street,
+        economic_status: draft.household.economic_status,
+        religion: draft.household.religion,
+        community: draft.household.community,
+        lamination: draft.household.lamination ?? false,
+        e_sevai_service_charges: draft.household.e_sevai_service_charges ?? false,
+        digital_safety_measures: draft.household.digital_safety_measures ?? false,
+        remarks: draft.household.remarks
+      }]);
+
+    if (hhError) throw hhError;
+  }
 
   // 2. Insert members
   for (const member of draft.members) {
@@ -71,6 +116,15 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
       await supabase.from('corrections_required').insert([{
         member_id: memberId,
         corrections: corrs
+      }]);
+    }
+
+    // 4.5 Insert Corrections Made
+    const corrsMade = draft.corrections_made?.[member.id!] || {};
+    if (Object.keys(corrsMade).length > 0) {
+      await supabase.from('corrections_made').insert([{
+        member_id: memberId,
+        corrections_made: corrsMade
       }]);
     }
 
@@ -126,6 +180,7 @@ export async function fetchSurveyDetail(householdId: string): Promise<DraftSurve
 
   const docsRecord: any = {};
   const corrRecord: any = {};
+  const corMadeRecord: any = {};
   const newDocsRecord: any = {};
   const baseDocsRecord: any = {};
   const schemesRecord: any = {};
@@ -137,12 +192,14 @@ export async function fetchSurveyDetail(householdId: string): Promise<DraftSurve
     const [
       { data: documents, error: docErr },
       { data: corrections_required, error: corErr },
+      { data: corrections_made, error: corMadeErr },
       { data: new_docs, error: newErr },
       { data: base_docs, error: baseErr },
       { data: schemes, error: schErr }
     ] = await Promise.all([
       supabase.from('documents').select('*').in('member_id', memberIds),
       supabase.from('corrections_required').select('*').in('member_id', memberIds),
+      supabase.from('corrections_made').select('*').in('member_id', memberIds),
       supabase.from('new_documents_needed').select('*').in('member_id', memberIds),
       supabase.from('base_documents_available').select('*').in('member_id', memberIds),
       supabase.from('schemes_accessed').select('*').in('member_id', memberIds)
@@ -150,6 +207,7 @@ export async function fetchSurveyDetail(householdId: string): Promise<DraftSurve
 
     if (docErr) throw docErr;
     if (corErr) throw corErr;
+    if (corMadeErr) throw corMadeErr;
     if (newErr) throw newErr;
     if (baseErr) throw baseErr;
     if (schErr) throw schErr;
@@ -157,6 +215,7 @@ export async function fetchSurveyDetail(householdId: string): Promise<DraftSurve
     members.forEach((m: any) => {
       docsRecord[m.id] = documents.find((d: any) => d.member_id === m.id) || {};
       corrRecord[m.id] = corrections_required.find((c: any) => c.member_id === m.id)?.corrections || {};
+      corMadeRecord[m.id] = corrections_made.find((cm: any) => cm.member_id === m.id)?.corrections_made || {};
       newDocsRecord[m.id] = new_docs.find((nd: any) => nd.member_id === m.id) || {};
       baseDocsRecord[m.id] = base_docs.find((bd: any) => bd.member_id === m.id) || {};
       schemesRecord[m.id] = schemes.find((s: any) => s.member_id === m.id) || {};
@@ -169,7 +228,7 @@ export async function fetchSurveyDetail(householdId: string): Promise<DraftSurve
     members: members || [],
     documents: docsRecord,
     corrections: corrRecord,
-    corrections_made: {},
+    corrections_made: corMadeRecord,
     new_docs: newDocsRecord,
     base_docs: baseDocsRecord,
     schemes: schemesRecord,
