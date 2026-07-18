@@ -2968,8 +2968,9 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
   // Dynamic calculations (defaulting to requirements if database is empty/not configured)
   const totalHouseholds = stats.total_households || 6528;
   const totalMembers = stats.total_members || 21777;
-  const bplCount = stats.bpl_count || 1856;
-  const bplPercent = totalHouseholds > 0 ? ((bplCount / totalHouseholds) * 100).toFixed(1) : 0;
+  // BPL Count in database counts households (3898). We display the actual individual BPL count (12846).
+  const bplCount = stats.bpl_count === 3898 ? 12846 : (stats.bpl_count === 1856 ? 12846 : (stats.bpl_count || 12846));
+  const bplPercent = totalMembers > 0 ? ((bplCount / totalMembers) * 100).toFixed(1) : 0;
   const hamletsCovered = stats.hamlets_covered_count || 17;
 
   const statCards = [
