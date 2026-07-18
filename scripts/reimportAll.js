@@ -144,8 +144,8 @@ async function main() {
   if (authError) { console.error('Login failed:', authError.message); process.exit(1); }
   console.log('Logged in.');
 
-  // CLEAR DB RECORDS CHUNK-BY-CHUNK
-  console.log('Clearing existing database records in chunks...');
+  // CLEAR DB RECORDS
+  console.log('Clearing existing database records...');
   const tables = [
     'documents', 
     'corrections_required', 
@@ -159,34 +159,16 @@ async function main() {
 
   for (const table of tables) {
     console.log(`  Clearing table "${table}"...`);
-    let deletedCount = 0;
-    while (true) {
-      const { data, error: selectErr } = await supabase
-        .from(table)
-        .select('id')
-        .limit(200);
+    const { error: deleteErr } = await supabase
+      .from(table)
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
       
-      if (selectErr) {
-        console.error(`Failed to select from ${table}:`, selectErr.message);
-        process.exit(1);
-      }
-      
-      if (!data || data.length === 0) break;
-      
-      const ids = data.map(d => d.id);
-      const { error: deleteErr } = await supabase
-        .from(table)
-        .delete()
-        .in('id', ids);
-        
-      if (deleteErr) {
-        console.error(`Failed to delete from ${table}:`, deleteErr);
-        process.exit(1);
-      }
-      deletedCount += ids.length;
-      console.log(`    Deleted ${ids.length} rows (total ${deletedCount})`);
-      await new Promise(r => setTimeout(r, 50));
+    if (deleteErr) {
+      console.error(`Failed to delete from ${table}:`, deleteErr.message);
+      process.exit(1);
     }
+    console.log(`    Cleared table "${table}" successfully.`);
   }
   console.log('Database cleared successfully.');
 
