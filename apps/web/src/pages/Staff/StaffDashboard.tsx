@@ -24,6 +24,147 @@ export default function StaffDashboard() {
   const [syncedSurveys, setSyncedSurveys] = useState<any[]>([]);
   const [loadingSynced, setLoadingSynced] = useState(false);
 
+  // Attendance states
+  const [attendanceStatus, setAttendanceStatus] = useState<'loading' | 'not_checked_in' | 'checked_in' | 'checked_out'>('loading');
+  const [checkInTime, setCheckInTime] = useState<string | null>(null);
+  const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
+  const [attendanceId, setAttendanceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAttendance = async () => {
+      if (!user?.email) return;
+      setAttendanceStatus('loading');
+      try {
+        const supabase = getSupabase() as any;
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        const { data, error } = await supabase
+          .from('staff_attendance')
+          .select('*')
+          .eq('email', user.email)
+          .gte('login_time', `${todayStr}T00:00:00Z`)
+          .order('login_time', { ascending: false })
+          .limit(1);
+          
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const log = data[0];
+          setAttendanceId(log.id);
+          setCheckInTime(log.login_time);
+          if (log.logout_time) {
+            setCheckOutTime(log.logout_time);
+            setAttendanceStatus('checked_out');
+          } else {
+            setAttendanceStatus('checked_in');
+          }
+        } else {
+          setAttendanceStatus('not_checked_in');
+        }
+      } catch (err) {
+        console.warn("Failed to fetch attendance from database, using localStorage fallback:", err);
+        const todayStr = new Date().toISOString().split('T')[0];
+        const localLogs = localStorage.getItem('care_attendance_logs');
+        const logs = localLogs ? JSON.parse(localLogs) : [];
+        const todayLog = logs.find((l: any) => l.email === user.email && l.loginTime.startsWith(todayStr));
+        
+        if (todayLog) {
+          setCheckInTime(todayLog.loginTime);
+          if (todayLog.logoutTime) {
+            setCheckOutTime(todayLog.logoutTime);
+            setAttendanceStatus('checked_out');
+          } else {
+            setAttendanceStatus('checked_in');
+          }
+        } else {
+          setAttendanceStatus('not_checked_in');
+        }
+      }
+    };
+    fetchAttendance();
+  }, [user?.email]);
+
+  const handleCheckIn = async () => {
+    if (!user?.email) return;
+    const nowISO = new Date().toISOString();
+    try {
+      const supabase = getSupabase() as any;
+      const { data, error } = await supabase
+        .from('staff_attendance')
+        .insert([{ email: user.email, login_time: nowISO }])
+        .select('*')
+        .single();
+        
+      if (error) throw error;
+      
+      setAttendanceId(data.id);
+      setCheckInTime(data.login_time);
+      setAttendanceStatus('checked_in');
+    } catch (err) {
+      console.warn("DB check-in failed, saving to localStorage:", err);
+      const localLogs = localStorage.getItem('care_attendance_logs');
+      const logs = localLogs ? JSON.parse(localLogs) : [];
+      const newLog = {
+        id: 'att-' + Date.now(),
+        email: user.email,
+        loginTime: nowISO,
+        logoutTime: null
+      };
+      logs.push(newLog);
+      localStorage.setItem('care_attendance_logs', JSON.stringify(logs));
+      
+      setCheckInTime(nowISO);
+      setAttendanceStatus('checked_in');
+    }
+  };
+
+  const handleCheckOut = async () => {
+    if (!user?.email) return;
+    const nowISO = new Date().toISOString();
+    try {
+      const supabase = getSupabase() as any;
+      if (attendanceId) {
+        const { error } = await supabase
+          .from('staff_attendance')
+          .update({ logout_time: nowISO })
+          .eq('id', attendanceId);
+          
+        if (error) throw error;
+      } else {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const { data } = await supabase
+          .from('staff_attendance')
+          .select('id')
+          .eq('email', user.email)
+          .gte('login_time', `${todayStr}T00:00:00Z`)
+          .is('logout_time', null)
+          .limit(1);
+          
+        if (data && data.length > 0) {
+          await supabase
+            .from('staff_attendance')
+            .update({ logout_time: nowISO })
+            .eq('id', data[0].id);
+        }
+      }
+      setCheckOutTime(nowISO);
+      setAttendanceStatus('checked_out');
+    } catch (err) {
+      console.warn("DB check-out failed, updating in localStorage:", err);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const localLogs = localStorage.getItem('care_attendance_logs');
+      const logs = localLogs ? JSON.parse(localLogs) : [];
+      const logIdx = logs.findIndex((l: any) => l.email === user.email && l.loginTime.startsWith(todayStr) && !l.logoutTime);
+      
+      if (logIdx !== -1) {
+        logs[logIdx].logoutTime = nowISO;
+        localStorage.setItem('care_attendance_logs', JSON.stringify(logs));
+      }
+      setCheckOutTime(nowISO);
+      setAttendanceStatus('checked_out');
+    }
+  };
+
   const staffHamlets = user?.email ? (STAFF_HAMLET_MAP[user.email] ?? []) : [];
 
   // Auto-initialize hamlet_code if it is not in the user's assigned hamlets list (e.g. placeholder 'HAM-001')
@@ -314,6 +455,111 @@ export default function StaffDashboard() {
             <PlusCircle size={20} />
             New Survey Entry
           </button>
+        </div>
+
+        {/* Daily Attendance Card */}
+        <div
+          className="animate-fade-in-up"
+          style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '20px 24px',
+            marginBottom: '24px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 4px 18px rgba(0,0,0,0.04)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px',
+            animation: 'fadeInUp 200ms ease'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '10px',
+                background: attendanceStatus === 'checked_in' ? 'rgba(16,185,129,0.1)' : attendanceStatus === 'checked_out' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: attendanceStatus === 'checked_in' ? '#10b981' : attendanceStatus === 'checked_out' ? '#ef4444' : '#f59e0b',
+                flexShrink: 0
+              }}
+            >
+              <Clock size={22} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>Daily Attendance Log</h3>
+              <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '4px', margin: 0 }}>
+                {attendanceStatus === 'loading' && 'Checking status...'}
+                {attendanceStatus === 'not_checked_in' && 'You have not checked in for duty today.'}
+                {attendanceStatus === 'checked_in' && `Checked in at ${new Date(checkInTime!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                {attendanceStatus === 'checked_out' && `Completed shift (Checked out at ${new Date(checkOutTime!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {attendanceStatus === 'not_checked_in' && (
+              <button
+                onClick={handleCheckIn}
+                style={{
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '9px 18px',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(16,185,129,0.2)',
+                  transition: 'all 150ms'
+                }}
+                onMouseOver={e => (e.currentTarget.style.transform = 'translateY(-1px)')}
+                onMouseOut={e => (e.currentTarget.style.transform = 'none')}
+              >
+                Check In
+              </button>
+            )}
+            {attendanceStatus === 'checked_in' && (
+              <button
+                onClick={handleCheckOut}
+                style={{
+                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '9px 18px',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(239,68,68,0.2)',
+                  transition: 'all 150ms'
+                }}
+                onMouseOver={e => (e.currentTarget.style.transform = 'translateY(-1px)')}
+                onMouseOut={e => (e.currentTarget.style.transform = 'none')}
+              >
+                Check Out
+              </button>
+            )}
+            {attendanceStatus === 'checked_out' && (
+              <span
+                style={{
+                  background: '#f1f5f9',
+                  color: '#64748b',
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700
+                }}
+              >
+                Shift Ended
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Quick stats row */}

@@ -119,8 +119,8 @@ const TABS = [
   'New Docs Needed',
   'Base Docs & Schemes',
   'Other Services',
-  'Remarks',
-  'Corrections Made'
+  'Corrections Made',
+  'Remarks'
 ];
 
 const AVAILABLE_DOCS = [
@@ -1147,7 +1147,7 @@ export default function SurveyForm() {
             </div>
           )}
 
-          {activeTab === 8 && (
+          {activeTab === 7 && (
             <div style={{ pointerEvents: 'auto', userSelect: 'auto' }}>
               <h2 className="text-lg font-bold border-b pb-2 mb-4">Corrections Made & New Docs Obtained</h2>
               {draft.members.length === 0 ? (
@@ -1399,7 +1399,7 @@ export default function SurveyForm() {
             </div>
           )}
 
-          {activeTab === 7 && (
+          {activeTab === 8 && (
             <div>
               <h2 className="text-lg font-bold border-b pb-2 mb-4">Remarks</h2>
               <textarea
