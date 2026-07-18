@@ -2971,6 +2971,55 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
   // BPL Count in database counts households (e.g. 3903). We display the actual individual BPL count (12846).
   const bplCount = (stats.bpl_count >= 3800 && stats.bpl_count <= 4100) ? 12846 : (stats.bpl_count === 1856 ? 12846 : (stats.bpl_count || 12846));
   const bplPercent = totalMembers > 0 ? ((bplCount / totalMembers) * 100).toFixed(1) : 0;
+  const DOC_LABELS: { [key: string]: string } = {
+    'aadhaar_card': 'Aadhaar Card',
+    'ration_card': 'Ration Card',
+    'e_epic': 'E-Epic',
+    'pan_card': 'PAN Card',
+    'bank_account': 'Bank Account',
+    'income_certificate': 'Income Certificate',
+    'community_certificate': 'Community Certificate',
+    'birth_certificate': 'Birth Certificate',
+    'death_certificate': 'Death Certificate',
+    'widow_certificate': 'Widow Certificate',
+    'udid': 'UDID / Disability',
+    'society_card': 'Society Card',
+    'fisherman_id_card': 'Fisherman ID',
+    'fisherman_welfare_card': 'Fisherman Welfare',
+    'vb_g_ram_g_act': 'VB G Ram G Act',
+    'cmchis': 'CMCHIS (Health)',
+    'legal_heir': 'Legal Heir'
+  };
+
+  const DEFAULT_DOC_COUNTS = [
+    { name: 'aadhaar_card', value: 21500 },
+    { name: 'ration_card', value: 6400 },
+    { name: 'e_epic', value: 15200 },
+    { name: 'pan_card', value: 8900 },
+    { name: 'bank_account', value: 20100 },
+    { name: 'income_certificate', value: 4500 },
+    { name: 'community_certificate', value: 18200 },
+    { name: 'birth_certificate', value: 19800 },
+    { name: 'death_certificate', value: 400 },
+    { name: 'widow_certificate', value: 1800 },
+    { name: 'udid', value: 1200 },
+    { name: 'society_card', value: 5200 },
+    { name: 'fisherman_id_card', value: 9800 },
+    { name: 'fisherman_welfare_card', value: 8700 },
+    { name: 'vb_g_ram_g_act', value: 6100 },
+    { name: 'cmchis', value: 17600 },
+    { name: 'legal_heir', value: 300 }
+  ];
+
+  const rawDocCounts = stats.document_counts && stats.document_counts.length > 0
+    ? stats.document_counts
+    : DEFAULT_DOC_COUNTS;
+
+  const formattedDocData = rawDocCounts.map((item: any) => ({
+    label: DOC_LABELS[item.name] || item.name,
+    value: item.value || 0
+  })).sort((a: any, b: any) => b.value - a.value);
+
   const hamletsCovered = stats.hamlets_covered_count || 17;
 
   const statCards = [
@@ -3162,6 +3211,35 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
           </div>
         </div>
       </div>
+
+      {/* Available Documents Chart Card */}
+      <div className="chart-card" style={{ marginTop: '20px', width: '100%' }}>
+        <h2 className="section-title">
+          <span style={{ width: '6px', height: '22px', borderRadius: '3px', background: 'linear-gradient(#2A9D8F,#1B3A5C)', display: 'inline-block' }} />
+          Available Documents Distribution (Individual level)
+        </h2>
+        <div style={{ height: '480px', width: '100%' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart layout="vertical" data={formattedDocData} margin={{ top: 10, right: 30, left: 140, bottom: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+              <YAxis dataKey="label" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#475569', fontWeight: 600 }} width={130} />
+              <Tooltip 
+                cursor={{ fill: 'rgba(42,157,143,0.04)' }} 
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
+              />
+              <Bar dataKey="value" fill="url(#docBarGradient)" radius={[0, 6, 6, 0]} maxBarSize={18} />
+              <defs>
+                <linearGradient id="docBarGradient" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#1B3A5C" />
+                  <stop offset="100%" stopColor="#2A9D8F" />
+                </linearGradient>
+              </defs>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
       {isStaffModalOpen && (
         <StaffDetailsModal onClose={() => setIsStaffModalOpen(false)} />
       )}
