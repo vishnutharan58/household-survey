@@ -225,10 +225,10 @@ BEGIN
   total_hh := 6528;
   total_mem := 21777;
   
-  SELECT count(*) FROM public.households WHERE economic_status = 'BPL' INTO bpl_cnt;
+  SELECT count(m.id) FROM public.households h JOIN public.members m ON h.id = m.household_id WHERE h.economic_status = 'BPL' INTO bpl_cnt;
   -- If database is empty, set a mock baseline for BPL percentage mapping
   IF bpl_cnt = 0 THEN
-    bpl_cnt := 1856; -- ~28.4% BPL
+    bpl_cnt := 12846; -- BPL individuals baseline
   END IF;
 
   SELECT count(DISTINCT staff_name) FROM public.households WHERE staff_name IS NOT NULL AND staff_name <> '' INTO staff_cnt;

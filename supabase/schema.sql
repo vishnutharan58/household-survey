@@ -266,7 +266,7 @@ BEGIN
   -- Basic counts
   SELECT count(*) INTO total_hh FROM public.households;
   SELECT count(*) INTO total_mem FROM public.members;
-  SELECT count(*) FROM public.households WHERE economic_status = 'BPL' INTO bpl_cnt;
+  SELECT count(m.id) FROM public.households h JOIN public.members m ON h.id = m.household_id WHERE h.economic_status = 'BPL' INTO bpl_cnt;
   SELECT count(DISTINCT staff_name) FROM public.households WHERE staff_name IS NOT NULL AND staff_name <> '' INTO staff_cnt;
   SELECT count(DISTINCT hamlet_code) FROM public.households WHERE hamlet_code IS NOT NULL AND hamlet_code <> '' INTO hamlet_cnt;
 
