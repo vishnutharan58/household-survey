@@ -2083,6 +2083,23 @@ function SurveyDetailPanel({ survey, onClose }: { survey: DraftSurvey; onClose: 
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ household: true });
 
+  const [loadingEdit, setLoadingEdit] = useState(false);
+
+  const handleEdit = async () => {
+    setLoadingEdit(true);
+    try {
+      const fullDetail = await fetchSurveyDetail(survey.id);
+      onClose();
+      navigate(`/staff/survey/${survey.id}`, { state: { survey: fullDetail } });
+    } catch (err) {
+      console.error("Failed to load survey details for editing:", err);
+      onClose();
+      navigate(`/staff/survey/${survey.id}`, { state: { survey } });
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
+
   const toggle = (key: string) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
 
   const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
@@ -2171,18 +2188,19 @@ function SurveyDetailPanel({ survey, onClose }: { survey: DraftSurvey; onClose: 
 
           {/* Admin edit button */}
           <button
-            onClick={() => { onClose(); navigate(`/staff/survey/${survey.id}`, { state: { survey } }); }}
+            onClick={handleEdit}
+            disabled={loadingEdit}
             style={{
               marginTop: '14px', display: 'flex', alignItems: 'center', gap: '6px',
               padding: '8px 16px', borderRadius: '8px', border: 'none',
               background: 'rgba(255,255,255,0.18)',
-              color: 'white', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer',
-              transition: 'background 200ms',
+              color: 'white', fontWeight: 600, fontSize: '0.82rem', cursor: loadingEdit ? 'not-allowed' : 'pointer',
+              transition: 'background 200ms', opacity: loadingEdit ? 0.7 : 1
             }}
-            onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.28)')}
-            onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.18)')}
+            onMouseOver={e => { if (!loadingEdit) e.currentTarget.style.background = 'rgba(255,255,255,0.28)'; }}
+            onMouseOut={e => { if (!loadingEdit) e.currentTarget.style.background = 'rgba(255,255,255,0.18)'; }}
           >
-            <Pencil size={13} /> Edit This Survey
+            <Pencil size={13} /> {loadingEdit ? 'Loading details...' : 'Edit This Survey'}
           </button>
         </div>
 

@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useAuthStore, useDraftStore, useEditRequestStore, syncDraftToSupabase, getSupabase } from '@pro-vision-care/shared';
+import { useState, useEffect } from 'react';
+import { useAuthStore, useDraftStore, useEditRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail } from '@pro-vision-care/shared';
 import type { DraftSurvey } from '@pro-vision-care/shared';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, Save, Send, Eye, Pencil, Lock, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Send, Eye, Pencil, Lock, AlertCircle, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid'; // we need to install uuid if not already
 
 // Hamlet codes per staff — mirrors Login.tsx
@@ -189,12 +189,13 @@ export default function SurveyForm() {
   const { drafts, saveDraft, markAsPendingSync: _markAsPendingSync } = useDraftStore();
   const { requests, clearRequest } = useEditRequestStore();
 
-  const existingDraft = location.state?.survey || (id ? drafts[id] : null);
+  const realId = (id && id !== 'new') ? id : undefined;
+  const existingDraft = location.state?.survey || (realId ? drafts[realId] : null);
   const isReviewMode = existingDraft?.status === 'synced';
   const [isEditing, setIsEditing] = useState(false);
 
   // For synced surveys: admin can always edit; staff needs an approved request
-  const editRequest = id ? requests[id] : undefined;
+  const editRequest = realId ? requests[realId] : undefined;
   const isAdmin = role === 'admin';
   const isEditApproved = isAdmin || editRequest?.status === 'approved';
 
@@ -202,34 +203,62 @@ export default function SurveyForm() {
 
   // Load existing draft or create new
   const [draft, setDraft] = useState<DraftSurvey>(() => {
+    let initialDraft: DraftSurvey;
     if (location.state?.survey) {
-      return location.state.survey;
+      initialDraft = location.state.survey;
+    } else if (realId && drafts[realId]) {
+      initialDraft = drafts[realId];
+    } else {
+      const initialHamletCode = hamlet_code || '';
+      const initialHamletName = HAMLET_CODE_TO_NAME[initialHamletCode] || '';
+      initialDraft = {
+        id: realId || uuidv4(),
+        household: {
+          date: new Date().toISOString().split('T')[0],
+          staff_name: user?.email || '',
+          hamlet_code: initialHamletCode,
+          hamlet_name: initialHamletName,
+          block: user?.email ? (STAFF_BLOCK_MAP[user.email] || '') : '',
+        },
+        members: [],
+        documents: {},
+        corrections: {},
+        corrections_made: {},
+        new_docs: {},
+        base_docs: {},
+        schemes: {},
+        lastSavedAt: new Date().toISOString(),
+        status: 'draft'
+      };
     }
-    if (id && drafts[id]) {
-      return drafts[id];
+    // Ensure all members have valid IDs
+    if (initialDraft.members && initialDraft.members.length > 0) {
+      initialDraft = {
+        ...initialDraft,
+        members: initialDraft.members.map(m => ({ ...m, id: m.id || uuidv4() }))
+      };
     }
-    const initialHamletCode = hamlet_code || '';
-    const initialHamletName = HAMLET_CODE_TO_NAME[initialHamletCode] || '';
-    return {
-      id: id || uuidv4(),
-      household: {
-        date: new Date().toISOString().split('T')[0],
-        staff_name: user?.email || '',
-        hamlet_code: initialHamletCode,
-        hamlet_name: initialHamletName,
-        block: user?.email ? (STAFF_BLOCK_MAP[user.email] || '') : '',
-      },
-      members: [],
-      documents: {},
-      corrections: {},
-      corrections_made: {},
-      new_docs: {},
-      base_docs: {},
-      schemes: {},
-      lastSavedAt: new Date().toISOString(),
-      status: 'draft'
-    };
+    return initialDraft;
   });
+
+  // Auto-fetch full details if editing an existing survey with missing or incomplete member details
+  useEffect(() => {
+    if (!realId) return;
+
+    const hasIncompleteMembers = !draft.members || draft.members.length === 0 || draft.members.some(m => !m.id || Object.keys(m).length <= 1);
+
+    if (hasIncompleteMembers) {
+      fetchSurveyDetail(realId)
+        .then(fullDetail => {
+          if (fullDetail) {
+            setDraft(fullDetail);
+          }
+        })
+        .catch(err => {
+          console.warn("Could not fetch full survey detail for ID:", realId, err);
+        });
+    }
+  }, [realId]);
 
   const handleSaveDraft = () => {
     saveDraft({ ...draft, status: 'draft' });
@@ -266,6 +295,39 @@ export default function SurveyForm() {
       base_docs: { ...prev.base_docs, [newMemberId]: {} },
       schemes: { ...prev.schemes, [newMemberId]: {} },
     }));
+  };
+
+  const handleRemoveMember = (index: number) => {
+    setDraft(prev => {
+      const memberToRemove = prev.members[index];
+      const newMembers = prev.members.filter((_, i) => i !== index);
+      const newDocs = { ...prev.documents };
+      const newCorrs = { ...prev.corrections };
+      const newCorrsMade = { ...prev.corrections_made };
+      const newNewDocs = { ...prev.new_docs };
+      const newBaseDocs = { ...prev.base_docs };
+      const newSchemes = { ...prev.schemes };
+
+      if (memberToRemove?.id) {
+        delete newDocs[memberToRemove.id];
+        delete newCorrs[memberToRemove.id];
+        delete newCorrsMade[memberToRemove.id];
+        delete newNewDocs[memberToRemove.id];
+        delete newBaseDocs[memberToRemove.id];
+        delete newSchemes[memberToRemove.id];
+      }
+
+      return {
+        ...prev,
+        members: newMembers,
+        documents: newDocs,
+        corrections: newCorrs,
+        corrections_made: newCorrsMade,
+        new_docs: newNewDocs,
+        base_docs: newBaseDocs,
+        schemes: newSchemes
+      };
+    });
   };
 
   const handleDocToggle = (memberId: string, category: 'documents' | 'new_docs' | 'base_docs' | 'schemes', docId: string) => {
@@ -770,9 +832,20 @@ export default function SurveyForm() {
                 {draft.members.map((member, i) => (
                   <div key={member.id} className="border rounded-xl p-4 bg-gray-50 space-y-3">
                     {/* Member header */}
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="w-7 h-7 rounded-full bg-accent text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
-                      <span className="text-sm font-semibold text-gray-600">Member {i + 1}</span>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-full bg-accent text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                        <span className="text-sm font-semibold text-gray-600">Member {i + 1}</span>
+                      </div>
+                      {draft.members.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMember(i)}
+                          className="flex items-center gap-1 text-red-500 hover:text-red-700 text-xs font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 size={13} /> Remove
+                        </button>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">

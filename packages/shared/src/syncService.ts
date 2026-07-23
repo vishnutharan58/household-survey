@@ -3,10 +3,11 @@ import type { DraftSurvey } from './store';
 
 export async function syncDraftToSupabase(draft: DraftSurvey) {
   const supabase = getSupabase() as any;
-  const householdId = draft.id;
+  let householdId = draft.id;
 
-  // Check if household exists
-  const { data: existingHh, error: checkError } = await supabase
+  // Check if household exists by ID first, then fallback to household_number + hamlet_code
+  let existingHh: any = null;
+  const { data: hhById, error: checkError } = await supabase
     .from('households')
     .select('id')
     .eq('id', householdId)
@@ -14,8 +15,25 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
 
   if (checkError) throw checkError;
 
+  if (hhById) {
+    existingHh = hhById;
+  } else if (draft.household?.household_number && draft.household?.hamlet_code) {
+    const { data: hhByNum } = await supabase
+      .from('households')
+      .select('id')
+      .eq('household_number', draft.household.household_number)
+      .eq('hamlet_code', draft.household.hamlet_code)
+      .maybeSingle();
+
+    if (hhByNum) {
+      existingHh = hhByNum;
+      householdId = hhByNum.id;
+      draft.id = hhByNum.id;
+    }
+  }
+
   if (existingHh) {
-    // 1. Update household
+    // 1. Update existing household
     const { error: hhError } = await supabase
       .from('households')
       .update({
@@ -42,7 +60,7 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
 
     if (hhError) throw hhError;
 
-    // 2. Delete existing members (cascades to child tables)
+    // 2. Delete existing members for this household (cascades to child tables in DB)
     const { error: deleteMemError } = await supabase
       .from('members')
       .delete()
@@ -78,8 +96,10 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
     if (hhError) throw hhError;
   }
 
-  // 2. Insert members
+  // 2. Insert members and link child records safely using member.id
   for (const member of draft.members) {
+    const oldMemberId = member.id;
+
     const { data: memberData, error: memError } = await supabase
       .from('members')
       .insert([{
@@ -100,56 +120,63 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
       .single();
 
     if (memError) throw memError;
-    const memberId = memberData.id;
+    const newMemberId = memberData.id;
+
+    // Helper to extract non-metadata fields for child tables
+    const extractFields = (obj: Record<string, any> = {}) => {
+      const result: Record<string, any> = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (k !== 'id' && k !== 'member_id' && k !== 'created_at' && k !== 'updated_at') {
+          result[k] = v;
+        }
+      }
+      return result;
+    };
 
     // 3. Insert Documents
-    const docs = draft.documents[member.id!] || {};
-    if (Object.keys(docs).length > 0) {
-      const docPayload: any = { member_id: memberId };
-      for (const [k, v] of Object.entries(docs)) docPayload[k] = v;
-      await supabase.from('documents').insert([docPayload]);
+    const rawDocs = oldMemberId ? (draft.documents[oldMemberId] || {}) : {};
+    const docsPayload = extractFields(rawDocs);
+    if (Object.keys(docsPayload).length > 0) {
+      await supabase.from('documents').insert([{ member_id: newMemberId, ...docsPayload }]);
     }
 
-    // 4. Insert Corrections
-    const corrs = draft.corrections[member.id!] || {};
-    if (Object.keys(corrs).length > 0) {
+    // 4. Insert Corrections Required
+    const rawCorrs = oldMemberId ? (draft.corrections[oldMemberId] || {}) : {};
+    if (Object.keys(rawCorrs).length > 0) {
       await supabase.from('corrections_required').insert([{
-        member_id: memberId,
-        corrections: corrs
+        member_id: newMemberId,
+        corrections: rawCorrs
       }]);
     }
 
     // 4.5 Insert Corrections Made
-    const corrsMade = draft.corrections_made?.[member.id!] || {};
-    if (Object.keys(corrsMade).length > 0) {
+    const rawCorrsMade = oldMemberId ? (draft.corrections_made?.[oldMemberId] || {}) : {};
+    if (Object.keys(rawCorrsMade).length > 0) {
       await supabase.from('corrections_made').insert([{
-        member_id: memberId,
-        corrections_made: corrsMade
+        member_id: newMemberId,
+        corrections_made: rawCorrsMade
       }]);
     }
 
-    // 5. Insert New Docs
-    const newDocs = draft.new_docs[member.id!] || {};
-    if (Object.keys(newDocs).length > 0) {
-      const newDocPayload: any = { member_id: memberId };
-      for (const [k, v] of Object.entries(newDocs)) newDocPayload[k] = v;
-      await supabase.from('new_documents_needed').insert([newDocPayload]);
+    // 5. Insert New Docs Needed
+    const rawNewDocs = oldMemberId ? (draft.new_docs[oldMemberId] || {}) : {};
+    const newDocsPayload = extractFields(rawNewDocs);
+    if (Object.keys(newDocsPayload).length > 0) {
+      await supabase.from('new_documents_needed').insert([{ member_id: newMemberId, ...newDocsPayload }]);
     }
 
-    // 6. Base Docs
-    const baseDocs = draft.base_docs[member.id!] || {};
-    if (Object.keys(baseDocs).length > 0) {
-      const basePayload: any = { member_id: memberId };
-      for (const [k, v] of Object.entries(baseDocs)) basePayload[k] = v;
-      await supabase.from('base_documents_available').insert([basePayload]);
+    // 6. Insert Base Docs Available
+    const rawBaseDocs = oldMemberId ? (draft.base_docs[oldMemberId] || {}) : {};
+    const baseDocsPayload = extractFields(rawBaseDocs);
+    if (Object.keys(baseDocsPayload).length > 0) {
+      await supabase.from('base_documents_available').insert([{ member_id: newMemberId, ...baseDocsPayload }]);
     }
 
-    // 7. Schemes Accessed
-    const schemes = draft.schemes[member.id!] || {};
-    if (Object.keys(schemes).length > 0) {
-      const schemesPayload: any = { member_id: memberId };
-      for (const [k, v] of Object.entries(schemes)) schemesPayload[k] = v;
-      await supabase.from('schemes_accessed').insert([schemesPayload]);
+    // 7. Insert Schemes Accessed
+    const rawSchemes = oldMemberId ? (draft.schemes[oldMemberId] || {}) : {};
+    const schemesPayload = extractFields(rawSchemes);
+    if (Object.keys(schemesPayload).length > 0) {
+      await supabase.from('schemes_accessed').insert([{ member_id: newMemberId, ...schemesPayload }]);
     }
   }
 
