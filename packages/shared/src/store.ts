@@ -178,3 +178,89 @@ export const useEditRequestStore = create<EditRequestStoreState>()(
     { name: 'survey-edit-requests' }
   )
 );
+
+// ─── Leave Request Types & Store ─────────────────────────────────────
+export interface LeaveRequest {
+  id: string;
+  staffEmail: string;
+  staffName?: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  adminNote?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+interface LeaveRequestStoreState {
+  leaveRequests: Record<string, LeaveRequest>; // keyed by request id
+  submitLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'createdAt' | 'status'> & { id?: string }) => LeaveRequest;
+  approveLeaveRequest: (id: string, note?: string) => void;
+  rejectLeaveRequest: (id: string, note?: string) => void;
+  setLeaveRequests: (requests: LeaveRequest[]) => void;
+}
+
+export const useLeaveRequestStore = create<LeaveRequestStoreState>()(
+  persist(
+    (set) => ({
+      leaveRequests: {},
+      submitLeaveRequest: (req) => {
+        const id = req.id || 'leave-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+        const newReq: LeaveRequest = {
+          ...req,
+          id,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          leaveRequests: {
+            ...state.leaveRequests,
+            [id]: newReq,
+          },
+        }));
+        return newReq;
+      },
+      approveLeaveRequest: (id, note) => set((state) => {
+        const req = state.leaveRequests[id];
+        if (!req) return state;
+        return {
+          leaveRequests: {
+            ...state.leaveRequests,
+            [id]: {
+              ...req,
+              status: 'approved',
+              adminNote: note,
+              updatedAt: new Date().toISOString(),
+            },
+          },
+        };
+      }),
+      rejectLeaveRequest: (id, note) => set((state) => {
+        const req = state.leaveRequests[id];
+        if (!req) return state;
+        return {
+          leaveRequests: {
+            ...state.leaveRequests,
+            [id]: {
+              ...req,
+              status: 'rejected',
+              adminNote: note,
+              updatedAt: new Date().toISOString(),
+            },
+          },
+        };
+      }),
+      setLeaveRequests: (requests) => set(() => {
+        const map: Record<string, LeaveRequest> = {};
+        for (const req of requests) {
+          map[req.id] = req;
+        }
+        return { leaveRequests: map };
+      }),
+    }),
+    { name: 'staff-leave-requests' }
+  )
+);
+

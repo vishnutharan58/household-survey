@@ -446,4 +446,29 @@ ON storage.objects FOR ALL USING (
   )
 );
 
+-- Create Leave Requests table
+CREATE TABLE IF NOT EXISTS public.leave_requests (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  staff_email TEXT NOT NULL,
+  staff_name TEXT,
+  leave_type TEXT NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  admin_note TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.leave_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public all access on leave_requests"
+  ON public.leave_requests FOR ALL USING (true);
+
+CREATE TRIGGER update_leave_requests_modtime
+BEFORE UPDATE ON leave_requests
+FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
+
 

@@ -1,8 +1,9 @@
 // Removed unused React import
 import { useState, useEffect } from 'react';
-import { useAuthStore, useDraftStore, useEditRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail } from '@pro-vision-care/shared';
+import { useAuthStore, useDraftStore, useEditRequestStore, useLeaveRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail, fetchLeaveRequestsFromSupabase, createLeaveRequestInSupabase } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, PlusCircle, FileText, UploadCloud, MapPin, CheckCircle2, Clock, Pencil, Send, CheckCheck, XCircle, AlertCircle, ChevronDown } from 'lucide-react';
+import { LogOut, PlusCircle, FileText, UploadCloud, MapPin, CheckCircle2, Clock, Pencil, Send, CheckCheck, XCircle, AlertCircle, ChevronDown, CalendarDays, Calendar, X } from 'lucide-react';
+
 
 // Hamlet codes per staff — mirrors Login.tsx
 const STAFF_HAMLET_MAP: Record<string, string[]> = {
@@ -23,6 +24,79 @@ export default function StaffDashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncedSurveys, setSyncedSurveys] = useState<any[]>([]);
   const [loadingSynced, setLoadingSynced] = useState(false);
+
+  // Leave request state
+  const { leaveRequests, submitLeaveRequest, setLeaveRequests } = useLeaveRequestStore();
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [leaveType, setLeaveType] = useState('Casual Leave');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [leaveReason, setLeaveReason] = useState('');
+  const [submittingLeave, setSubmittingLeave] = useState(false);
+
+  useEffect(() => {
+    const loadLeaveRequests = async () => {
+      if (!user?.email) return;
+      const remoteLeaves = await fetchLeaveRequestsFromSupabase(user.email);
+      if (remoteLeaves && remoteLeaves.length > 0) {
+        setLeaveRequests(remoteLeaves);
+      }
+    };
+    loadLeaveRequests();
+  }, [user?.email]);
+
+  const handleOpenLeaveModal = () => {
+    setLeaveType('Casual Leave');
+    const todayStr = new Date().toISOString().split('T')[0];
+    setStartDate(todayStr);
+    setEndDate(todayStr);
+    setLeaveReason('');
+    setIsLeaveModalOpen(true);
+  };
+
+  const handleSubmitLeaveRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leaveReason.trim()) {
+      alert("Please provide a reason for the leave request.");
+      return;
+    }
+    if (!startDate || !endDate) {
+      alert("Please select start and end dates.");
+      return;
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      alert("Start date cannot be after end date.");
+      return;
+    }
+
+    setSubmittingLeave(true);
+    try {
+      const staffName = user?.user_metadata?.full_name || user?.email?.split('@')[0].toUpperCase() || user?.email || '';
+      const localReq = submitLeaveRequest({
+        staffEmail: user?.email || '',
+        staffName,
+        leaveType,
+        startDate,
+        endDate,
+        reason: leaveReason.trim(),
+      });
+
+      await createLeaveRequestInSupabase(localReq);
+
+      alert("Leave request submitted successfully to Admin!");
+      setIsLeaveModalOpen(false);
+    } catch (err: any) {
+      console.error("Leave request error:", err);
+      alert("Submitted locally. Admin will be notified when synchronized.");
+      setIsLeaveModalOpen(false);
+    } finally {
+      setSubmittingLeave(false);
+    }
+  };
+
+  const myLeaveRequests = Object.values(leaveRequests)
+    .filter(r => r.staffEmail === user?.email)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Attendance states
   const [attendanceStatus, setAttendanceStatus] = useState<'loading' | 'not_checked_in' | 'checked_in' | 'checked_out'>('loading');
@@ -430,31 +504,58 @@ export default function StaffDashboard() {
             </div>
           </div>
 
-          <button
-            id="staff-new-survey"
-            onClick={() => navigate('/staff/survey/new')}
-            style={{
-              background: 'linear-gradient(135deg, #2A9D8F, #22b5a5)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '13px 24px',
-              fontWeight: 700,
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 20px rgba(42,157,143,0.5)',
-              transition: 'all 220ms ease',
-              position: 'relative',
-            }}
-            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(42,157,143,0.65)'; }}
-            onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(42,157,143,0.5)'; }}
-          >
-            <PlusCircle size={20} />
-            New Survey Entry
-          </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button
+              id="staff-request-leave"
+              onClick={handleOpenLeaveModal}
+              style={{
+                background: 'linear-gradient(135deg, #1B3A5C, #2c527e)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '13px 20px',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 18px rgba(27,58,92,0.4)',
+                transition: 'all 220ms ease',
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(27,58,92,0.55)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 18px rgba(27,58,92,0.4)'; }}
+            >
+              <CalendarDays size={18} />
+              Request Leave
+            </button>
+
+            <button
+              id="staff-new-survey"
+              onClick={() => navigate('/staff/survey/new')}
+              style={{
+                background: 'linear-gradient(135deg, #2A9D8F, #22b5a5)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '13px 24px',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 20px rgba(42,157,143,0.5)',
+                transition: 'all 220ms ease',
+                position: 'relative',
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(42,157,143,0.65)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(42,157,143,0.5)'; }}
+            >
+              <PlusCircle size={20} />
+              New Survey Entry
+            </button>
+          </div>
         </div>
 
         {/* Daily Attendance Card */}
@@ -770,7 +871,191 @@ export default function StaffDashboard() {
             )}
           </div>
         </div>
+
+        {/* My Leave Requests Section */}
+        <div className="chart-card animate-fade-in-up" style={{ marginTop: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 className="section-title" style={{ margin: 0 }}>
+              <CalendarDays size={18} color="#1B3A5C" style={{ flexShrink: 0 }} />
+              My Leave Requests
+              <span style={{ background: '#e0f2fe', color: '#0369a1', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', marginLeft: '6px' }}>
+                {myLeaveRequests.length}
+              </span>
+            </h2>
+            <button
+              onClick={handleOpenLeaveModal}
+              style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'linear-gradient(135deg,#1B3A5C,#2c527e)', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(27,58,92,0.25)' }}
+            >
+              <PlusCircle size={14} /> Apply Leave
+            </button>
+          </div>
+
+          {myLeaveRequests.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '36px 0' }}>
+              <Calendar size={38} color="#cbd5e1" style={{ margin: '0 auto 10px' }} />
+              <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0 }}>No leave requests submitted yet.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px' }}>
+              {myLeaveRequests.map((req) => (
+                <div
+                  key={req.id}
+                  style={{
+                    background: '#f8fafc',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '10px'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e293b' }}>
+                        {req.leaveType}
+                      </span>
+                      {req.status === 'pending' && (
+                        <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 800, padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={12} /> Pending
+                        </span>
+                      )}
+                      {req.status === 'approved' && (
+                        <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 800, padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <CheckCheck size={12} /> Approved
+                        </span>
+                      )}
+                      {req.status === 'rejected' && (
+                        <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 800, padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <XCircle size={12} /> Declined
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ fontSize: '0.8rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                      <Calendar size={14} color="#64748b" />
+                      <span>{req.startDate} to {req.endDate}</span>
+                    </div>
+
+                    <p style={{ fontSize: '0.82rem', color: '#334155', margin: 0, background: 'white', padding: '10px', borderRadius: '8px', border: '1px solid #f1f5f9', fontStyle: 'italic' }}>
+                      "{req.reason}"
+                    </p>
+                  </div>
+
+                  {req.adminNote && (
+                    <div style={{ background: req.status === 'approved' ? '#f0fdf4' : '#fef2f2', border: `1px solid ${req.status === 'approved' ? '#bbf7d0' : '#fecaca'}`, borderRadius: '8px', padding: '8px 10px', fontSize: '0.75rem', color: req.status === 'approved' ? '#166534' : '#991b1b' }}>
+                      <strong>Admin Note:</strong> {req.adminNote}
+                    </div>
+                  )}
+
+                  <div style={{ fontSize: '0.7rem', color: '#94a3b8', textAlign: 'right' }}>
+                    Submitted: {new Date(req.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
+
+      {/* Leave Request Modal */}
+      {isLeaveModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: 'white', borderRadius: '20px', padding: '28px', maxWidth: '500px', width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(42,157,143,0.1)', color: '#2A9D8F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CalendarDays size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Request Leave</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#64748b' }}>Submit leave application with reason for Admin review</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsLeaveModalOpen(false)}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitLeaveRequest} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>Leave Type</label>
+                <select
+                  value={leaveType}
+                  onChange={e => setLeaveType(e.target.value)}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a', outline: 'none', background: '#f8fafc' }}
+                >
+                  <option value="Casual Leave">Casual Leave</option>
+                  <option value="Sick Leave">Sick Leave</option>
+                  <option value="Emergency Leave">Emergency Leave</option>
+                  <option value="Earned Leave">Earned / Annual Leave</option>
+                  <option value="Special Leave">Special / Maternity Leave</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>Start Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a', outline: 'none', background: '#f8fafc' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>End Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a', outline: 'none', background: '#f8fafc' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Reason for Leave <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="State the detailed reason for your leave request..."
+                  value={leaveReason}
+                  onChange={e => setLeaveReason(e.target.value)}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a', outline: 'none', background: '#f8fafc', resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsLeaveModalOpen(false)}
+                  style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingLeave}
+                  style={{ padding: '10px 22px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg,#2A9D8F,#1B3A5C)', color: 'white', fontWeight: 700, fontSize: '0.85rem', cursor: submittingLeave ? 'not-allowed' : 'pointer', boxShadow: '0 4px 14px rgba(42,157,143,0.4)', opacity: submittingLeave ? 0.7 : 1 }}
+                >
+                  {submittingLeave ? 'Submitting...' : 'Submit Request'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

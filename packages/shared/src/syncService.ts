@@ -1,5 +1,5 @@
 import { getSupabase } from './supabase';
-import type { DraftSurvey } from './store';
+import type { DraftSurvey, LeaveRequest } from './store';
 
 export async function syncDraftToSupabase(draft: DraftSurvey) {
   const supabase = getSupabase() as any;
@@ -303,4 +303,91 @@ export async function fetchAdminSurveys(): Promise<DraftSurvey[]> {
     } as DraftSurvey;
   });
 }
+
+// ─── Leave Request Sync Helpers ──────────────────────────────────────
+export async function fetchLeaveRequestsFromSupabase(staffEmail?: string): Promise<LeaveRequest[]> {
+  try {
+    const supabase = getSupabase() as any;
+    let query = supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
+    if (staffEmail) {
+      query = query.eq('staff_email', staffEmail);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data) return [];
+    return data.map((row: any) => ({
+      id: row.id,
+      staffEmail: row.staff_email,
+      staffName: row.staff_name,
+      leaveType: row.leave_type,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      reason: row.reason,
+      status: row.status,
+      adminNote: row.admin_note,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  } catch (err) {
+    console.warn("Failed to fetch leave requests from database:", err);
+    return [];
+  }
+}
+
+export async function createLeaveRequestInSupabase(req: LeaveRequest): Promise<LeaveRequest> {
+  try {
+    const supabase = getSupabase() as any;
+    const dbObj = {
+      id: req.id,
+      staff_email: req.staffEmail,
+      staff_name: req.staffName || '',
+      leave_type: req.leaveType,
+      start_date: req.startDate,
+      end_date: req.endDate,
+      reason: req.reason,
+      status: req.status || 'pending',
+      admin_note: req.adminNote || '',
+    };
+    const { data, error } = await supabase.from('leave_requests').insert([dbObj]).select('*').single();
+    if (error) throw error;
+    if (data) {
+      return {
+        id: data.id,
+        staffEmail: data.staff_email,
+        staffName: data.staff_name,
+        leaveType: data.leave_type,
+        startDate: data.start_date,
+        endDate: data.end_date,
+        reason: data.reason,
+        status: data.status,
+        adminNote: data.admin_note,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+    }
+  } catch (err) {
+    console.warn("Failed to create leave request in database, using local state fallback:", err);
+  }
+  return req;
+}
+
+export async function updateLeaveRequestStatusInSupabase(id: string, status: 'approved' | 'rejected', adminNote?: string): Promise<boolean> {
+  try {
+    const supabase = getSupabase() as any;
+    const { error } = await supabase
+      .from('leave_requests')
+      .update({
+        status,
+        admin_note: adminNote || '',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.warn("Failed to update leave request status in database:", err);
+    return false;
+  }
+}
+
 
