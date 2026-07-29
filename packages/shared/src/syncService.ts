@@ -391,24 +391,42 @@ export async function updateLeaveRequestStatusInSupabase(id: string, status: 'ap
 }
 
 export async function fetchOtherServicesList(): Promise<Array<{ id: string; sno: string; name: string; description?: string }>> {
+  let dbServices: any[] = [];
   try {
     const supabase = getSupabase() as any;
     const { data, error } = await supabase.from('other_services_list').select('*').order('sno', { ascending: true });
-    if (error) throw error;
-    if (data && data.length > 0) return data;
+    if (!error && data && data.length > 0) {
+      dbServices = data;
+    }
   } catch (err) {
     console.warn("Failed to fetch other_services_list from Supabase:", err);
   }
+
   const local = localStorage.getItem('care_portal_other_services');
+  let localServices: any[] = [];
   if (local) {
-    try { return JSON.parse(local); } catch (e) {}
+    try { localServices = JSON.parse(local); } catch (e) {}
   }
-  return [
+
+  const defaults = [
     { id: 'os-1', sno: '1', name: 'Lamination', description: 'Lamination services for document safety' },
     { id: 'os-2', sno: '2', name: 'E-Sevai Service Charges', description: 'Assistance with service charges for digital entitlements' },
     { id: 'os-3', sno: '3', name: 'Digital Safety Measures', description: 'Training/support for digital safety of files' }
   ];
+
+  const map = new Map<string, any>();
+  defaults.forEach(s => { if (s && s.name) map.set(s.name.toLowerCase().trim(), s); });
+  localServices.forEach(s => { if (s && s.name) map.set(s.name.toLowerCase().trim(), s); });
+  dbServices.forEach(s => { if (s && s.name) map.set(s.name.toLowerCase().trim(), s); });
+
+  const merged = Array.from(map.values());
+  try {
+    localStorage.setItem('care_portal_other_services', JSON.stringify(merged));
+  } catch (e) {}
+
+  return merged;
 }
+
 
 
 

@@ -244,12 +244,19 @@ export default function SurveyForm() {
   const [availableServices, setAvailableServices] = useState<Array<{ id: string; sno: string; name: string; description?: string }>>([]);
 
   useEffect(() => {
-    fetchOtherServicesList().then(services => {
-      if (services && services.length > 0) {
-        setAvailableServices(services);
-      }
-    });
-  }, []);
+    const updateServices = () => {
+      fetchOtherServicesList().then(services => {
+        if (services && services.length > 0) {
+          setAvailableServices(services);
+        }
+      });
+    };
+
+    updateServices();
+
+    window.addEventListener('focus', updateServices);
+    return () => window.removeEventListener('focus', updateServices);
+  }, [activeTab]);
 
   const isServiceChecked = (service: any) => {
     const nameLower = service.name.toLowerCase();

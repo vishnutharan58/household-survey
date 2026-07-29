@@ -1175,7 +1175,21 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
       setCollectivesList(dbCollectives && dbCollectives.length > 0 ? dbCollectives : INITIAL_COLLECTIVES);
       setDocumentsList(dbDocs && dbDocs.length > 0 ? dbDocs : INITIAL_DOCUMENTS_LIST);
       setSchemesList(dbSchemes && dbSchemes.length > 0 ? dbSchemes : INITIAL_SCHEMES_LIST);
-      setServicesList(dbServices && dbServices.length > 0 ? dbServices : INITIAL_OTHER_SERVICES);
+      
+      const localServicesStr = localStorage.getItem('care_portal_other_services');
+      let localServicesArr: any[] = [];
+      if (localServicesStr) {
+        try { localServicesArr = JSON.parse(localServicesStr); } catch(e) {}
+      }
+      const servicesMap = new Map<string, any>();
+      INITIAL_OTHER_SERVICES.forEach(s => servicesMap.set(s.name.toLowerCase().trim(), s));
+      localServicesArr.forEach(s => { if (s?.name) servicesMap.set(s.name.toLowerCase().trim(), s); });
+      if (dbServices && dbServices.length > 0) {
+        dbServices.forEach((s: any) => { if (s?.name) servicesMap.set(s.name.toLowerCase().trim(), s); });
+      }
+      const combinedServices = Array.from(servicesMap.values());
+      setServicesList(combinedServices);
+      localStorage.setItem('care_portal_other_services', JSON.stringify(combinedServices));
       setAttendanceList(dbAttendance || []);
       setIsUsingDb(true);
     } catch (err) {
@@ -1463,10 +1477,17 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
     const finalId = serviceData.id || 'os-' + Date.now();
     const preparedData = { ...serviceData, id: finalId };
     
+    // Always update local state & localStorage first for instant responsiveness
+    const updated = isNew 
+      ? [...servicesList, preparedData] 
+      : servicesList.map(s => s.id === preparedData.id ? preparedData : s);
+    setServicesList(updated);
+    localStorage.setItem('care_portal_other_services', JSON.stringify(updated));
+
     if (isUsingDb) {
       try {
         const supabase = getSupabase() as any;
-        const dbObj = { sno: preparedData.sno, name: preparedData.name, description: preparedData.description };
+        const dbObj = { sno: preparedData.sno || '', name: preparedData.name, description: preparedData.description || '' };
         if (isNew) {
           await supabase.from('other_services_list').insert([dbObj]);
         } else {
@@ -1476,18 +1497,16 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
       } catch (err) {
         console.error("Failed to save other service:", err);
       }
-    } else {
-      const updated = isNew 
-        ? [...servicesList, preparedData] 
-        : servicesList.map(s => s.id === preparedData.id ? preparedData : s);
-      setServicesList(updated);
-      localStorage.setItem('care_portal_other_services', JSON.stringify(updated));
     }
     setIsEditServiceOpen(false);
   };
 
   const handleDeleteService = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this service?")) return;
+    const updated = servicesList.filter(s => s.id !== id);
+    setServicesList(updated);
+    localStorage.setItem('care_portal_other_services', JSON.stringify(updated));
+
     if (isUsingDb) {
       try {
         const supabase = getSupabase() as any;
@@ -1496,10 +1515,6 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
       } catch (err) {
         console.error("Failed to delete other service:", err);
       }
-    } else {
-      const updated = servicesList.filter(s => s.id !== id);
-      setServicesList(updated);
-      localStorage.setItem('care_portal_other_services', JSON.stringify(updated));
     }
   };
 
