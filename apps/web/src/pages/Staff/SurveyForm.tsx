@@ -311,20 +311,34 @@ export default function SurveyForm() {
   }, [realId]);
 
   const handleSaveDraft = () => {
-    saveDraft({ ...draft, status: 'draft' });
+    const targetId = realId || draft.id || uuidv4();
+    const preparedDraft: DraftSurvey = {
+      ...draft,
+      id: targetId,
+      household: { ...draft.household, id: targetId },
+      status: 'draft'
+    };
+    saveDraft(preparedDraft);
   };
 
   const handleSubmit = async () => {
+    const targetId = realId || draft.id || uuidv4();
+    const preparedDraft: DraftSurvey = {
+      ...draft,
+      id: targetId,
+      household: { ...draft.household, id: targetId }
+    };
+
     try {
       // Sync the draft directly to Supabase
-      await syncDraftToSupabase(draft);
-      // Save locally with synced status
-      saveDraft({ ...draft, status: 'synced' });
+      await syncDraftToSupabase(preparedDraft);
+      // Save locally with synced status under targetId
+      saveDraft({ ...preparedDraft, status: 'synced' });
       alert('Survey submitted and synced successfully!');
     } catch (err: any) {
       console.error('Direct sync failed:', err);
       // Fallback: save as pending_sync so it can be manually synced from the dashboard
-      saveDraft({ ...draft, status: 'pending_sync' });
+      saveDraft({ ...preparedDraft, status: 'pending_sync' });
       alert('Sync failed. Saved locally. Please sync from the dashboard when online. Details: ' + err.message);
     }
     // If this was an approved edit, clear the request so it resets

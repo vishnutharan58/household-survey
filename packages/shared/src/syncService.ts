@@ -3,21 +3,37 @@ import type { DraftSurvey, LeaveRequest } from './store';
 
 export async function syncDraftToSupabase(draft: DraftSurvey) {
   const supabase = getSupabase() as any;
-  let householdId = draft.id;
+  let householdId = draft.id || draft.household?.id;
 
-  // Check if household exists by ID first, then fallback to household_number + hamlet_code
   let existingHh: any = null;
-  const { data: hhById, error: checkError } = await supabase
-    .from('households')
-    .select('id')
-    .eq('id', householdId)
-    .maybeSingle();
 
-  if (checkError) throw checkError;
+  if (householdId) {
+    const { data: hhById, error: checkError } = await supabase
+      .from('households')
+      .select('id')
+      .eq('id', householdId)
+      .maybeSingle();
 
-  if (hhById) {
-    existingHh = hhById;
-  } else if (draft.household?.household_number && draft.household?.hamlet_code) {
+    if (!checkError && hhById) {
+      existingHh = hhById;
+    }
+  }
+
+  if (!existingHh && draft.household?.id) {
+    const { data: hhByHhId } = await supabase
+      .from('households')
+      .select('id')
+      .eq('id', draft.household.id)
+      .maybeSingle();
+
+    if (hhByHhId) {
+      existingHh = hhByHhId;
+      householdId = hhByHhId.id;
+      draft.id = hhByHhId.id;
+    }
+  }
+
+  if (!existingHh && draft.household?.household_number && draft.household?.hamlet_code) {
     const { data: hhByNum } = await supabase
       .from('households')
       .select('id')
@@ -54,21 +70,39 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
         lamination: draft.household.lamination ?? false,
         e_sevai_service_charges: draft.household.e_sevai_service_charges ?? false,
         digital_safety_measures: draft.household.digital_safety_measures ?? false,
-        remarks: draft.household.remarks
+        remarks: draft.household.remarks,
+        updated_at: new Date().toISOString()
       })
       .eq('id', householdId);
 
     if (hhError) throw hhError;
 
-    // 2. Delete existing members for this household (cascades to child tables in DB)
-    const { error: deleteMemError } = await supabase
+    // 2. Fetch and delete existing child records and members for this household to prevent FK errors or duplicate members
+    const { data: oldMembers } = await supabase
       .from('members')
-      .delete()
+      .select('id')
       .eq('household_id', householdId);
 
-    if (deleteMemError) throw deleteMemError;
+    if (oldMembers && oldMembers.length > 0) {
+      const oldMemIds = oldMembers.map((m: any) => m.id);
+      await supabase.from('documents').delete().in('member_id', oldMemIds);
+      await supabase.from('corrections_required').delete().in('member_id', oldMemIds);
+      await supabase.from('corrections_made').delete().in('member_id', oldMemIds);
+      await supabase.from('new_documents_needed').delete().in('member_id', oldMemIds);
+      await supabase.from('base_documents_available').delete().in('member_id', oldMemIds);
+      await supabase.from('schemes_accessed').delete().in('member_id', oldMemIds);
+
+      await supabase.from('members').delete().eq('household_id', householdId);
+    }
   } else {
     // 1. Insert new household
+    if (!householdId) {
+      householdId = draft.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'hh-' + Date.now());
+    }
+    if (householdId) {
+      draft.id = householdId;
+    }
+
     const { error: hhError } = await supabase
       .from('households')
       .insert([{
