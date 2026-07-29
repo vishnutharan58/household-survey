@@ -231,6 +231,30 @@ export default function SurveyForm() {
         status: 'draft'
       };
     }
+    // Extract other_services_selected if encoded in remarks
+    if (initialDraft && initialDraft.household) {
+      const hh = initialDraft.household;
+      let otherSelected = (hh as any).other_services_selected || {};
+      let remarksText = hh.remarks || '';
+      if (remarksText.includes('\n\n__OTHER_SERVICES__:')) {
+        const parts = remarksText.split('\n\n__OTHER_SERVICES__:');
+        remarksText = parts[0];
+        try {
+          otherSelected = { ...otherSelected, ...JSON.parse(parts[1]) };
+        } catch (e) {}
+      }
+      initialDraft = {
+        ...initialDraft,
+        id: realId || initialDraft.id,
+        household: {
+          ...hh,
+          id: realId || initialDraft.id,
+          remarks: remarksText,
+          other_services_selected: otherSelected
+        }
+      };
+    }
+
     // Ensure all members have valid IDs
     if (initialDraft.members && initialDraft.members.length > 0) {
       initialDraft = {
@@ -300,19 +324,34 @@ export default function SurveyForm() {
   useEffect(() => {
     if (!realId) return;
 
-    const hasIncompleteMembers = !draft.members || draft.members.length === 0 || draft.members.some(m => !m.id || Object.keys(m).length <= 1);
-
-    if (hasIncompleteMembers) {
-      fetchSurveyDetail(realId)
-        .then(fullDetail => {
-          if (fullDetail) {
-            setDraft(fullDetail);
+    fetchSurveyDetail(realId)
+      .then(fullDetail => {
+        if (fullDetail) {
+          const hh = fullDetail.household || {};
+          let otherSelected = (hh as any).other_services_selected || {};
+          let remarksText = hh.remarks || '';
+          if (remarksText.includes('\n\n__OTHER_SERVICES__:')) {
+            const parts = remarksText.split('\n\n__OTHER_SERVICES__:');
+            remarksText = parts[0];
+            try {
+              otherSelected = { ...otherSelected, ...JSON.parse(parts[1]) };
+            } catch (e) {}
           }
-        })
-        .catch(err => {
-          console.warn("Could not fetch full survey detail for ID:", realId, err);
-        });
-    }
+          setDraft({
+            ...fullDetail,
+            id: realId,
+            household: {
+              ...hh,
+              id: realId,
+              remarks: remarksText,
+              other_services_selected: otherSelected
+            }
+          });
+        }
+      })
+      .catch(err => {
+        console.warn("Could not fetch full survey detail for ID:", realId, err);
+      });
   }, [realId]);
 
   const handleSaveDraft = () => {

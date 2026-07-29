@@ -48,6 +48,16 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
     }
   }
 
+  const otherSelected = (draft.household as any).other_services_selected || {};
+  let cleanRemarks = draft.household.remarks || '';
+  if (cleanRemarks.includes('\n\n__OTHER_SERVICES__:')) {
+    cleanRemarks = cleanRemarks.split('\n\n__OTHER_SERVICES__:')[0];
+  }
+  let finalRemarks = cleanRemarks;
+  if (Object.keys(otherSelected).length > 0) {
+    finalRemarks = cleanRemarks + '\n\n__OTHER_SERVICES__:' + JSON.stringify(otherSelected);
+  }
+
   const hhPayload: any = {
     date: draft.household.date,
     staff_name: draft.household.staff_name,
@@ -66,8 +76,8 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
     lamination: draft.household.lamination ?? false,
     e_sevai_service_charges: draft.household.e_sevai_service_charges ?? false,
     digital_safety_measures: draft.household.digital_safety_measures ?? false,
-    other_services_selected: (draft.household as any).other_services_selected || {},
-    remarks: draft.household.remarks
+    other_services_selected: otherSelected,
+    remarks: finalRemarks
   };
 
   if (existingHh) {
@@ -282,9 +292,38 @@ export async function fetchSurveyDetail(householdId: string): Promise<DraftSurve
     });
   }
 
+  let resolvedOtherServices: Record<string, boolean> = hh.other_services_selected || {};
+  let remarksText = hh.remarks || '';
+
+  if (remarksText.includes('\n\n__OTHER_SERVICES__:')) {
+    const parts = remarksText.split('\n\n__OTHER_SERVICES__:');
+    remarksText = parts[0];
+    try {
+      const parsed = JSON.parse(parts[1]);
+      resolvedOtherServices = { ...resolvedOtherServices, ...parsed };
+    } catch (e) {}
+  }
+
+  try {
+    const localDraftsStr = localStorage.getItem('care-survey-drafts');
+    if (localDraftsStr) {
+      const parsedDrafts = JSON.parse(localDraftsStr);
+      const localHh = parsedDrafts?.state?.drafts?.[householdId]?.household;
+      if (localHh?.other_services_selected) {
+        resolvedOtherServices = { ...resolvedOtherServices, ...localHh.other_services_selected };
+      }
+    }
+  } catch (e) {}
+
+  const finalHousehold = {
+    ...hh,
+    remarks: remarksText,
+    other_services_selected: resolvedOtherServices
+  };
+
   return {
     id: hh.id,
-    household: hh,
+    household: finalHousehold,
     members: members || [],
     documents: docsRecord,
     corrections: corrRecord,

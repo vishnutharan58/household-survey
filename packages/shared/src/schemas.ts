@@ -21,6 +21,7 @@ export const HouseholdSchema = z.object({
   lamination: z.boolean().default(false),
   e_sevai_service_charges: z.boolean().default(false),
   digital_safety_measures: z.boolean().default(false),
+  other_services_selected: z.record(z.boolean()).optional(),
 });
 
 export const MemberSchema = z.object({
