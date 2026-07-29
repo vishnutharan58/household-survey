@@ -470,5 +470,38 @@ CREATE TRIGGER update_leave_requests_modtime
 BEFORE UPDATE ON leave_requests
 FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
 
+-- Create other_services_list table
+CREATE TABLE IF NOT EXISTS public.other_services_list (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  sno TEXT,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.other_services_list ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read access to other_services_list" 
+  ON public.other_services_list FOR SELECT USING (true);
+
+CREATE POLICY "Admin full access other_services_list" 
+  ON public.other_services_list FOR ALL USING (
+    auth.jwt() ->> 'role' = 'admin' OR 
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+  );
+
+INSERT INTO public.other_services_list (sno, name, description)
+VALUES
+  ('1', 'Lamination', 'Lamination services for document safety'),
+  ('2', 'E-Sevai Service Charges', 'Assistance with service charges for digital entitlements'),
+  ('3', 'Digital Safety Measures', 'Training/support for digital safety of files')
+ON CONFLICT DO NOTHING;
+
+CREATE TRIGGER update_other_services_list_modtime
+BEFORE UPDATE ON other_services_list
+FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
+
 
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuthStore, useDraftStore, useEditRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail } from '@pro-vision-care/shared';
+import { useAuthStore, useDraftStore, useEditRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail, fetchOtherServicesList } from '@pro-vision-care/shared';
 import type { DraftSurvey } from '@pro-vision-care/shared';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, Send, Eye, Pencil, Lock, AlertCircle, Trash2 } from 'lucide-react';
@@ -240,6 +240,49 @@ export default function SurveyForm() {
     }
     return initialDraft;
   });
+
+  const [availableServices, setAvailableServices] = useState<Array<{ id: string; sno: string; name: string; description?: string }>>([]);
+
+  useEffect(() => {
+    fetchOtherServicesList().then(services => {
+      if (services && services.length > 0) {
+        setAvailableServices(services);
+      }
+    });
+  }, []);
+
+  const isServiceChecked = (service: any) => {
+    const nameLower = service.name.toLowerCase();
+    if (nameLower.includes('lamination')) return !!draft.household.lamination;
+    if (nameLower.includes('e-sevai') || nameLower.includes('sevai')) return !!draft.household.e_sevai_service_charges;
+    if (nameLower.includes('digital safety') || nameLower.includes('safety')) return !!draft.household.digital_safety_measures;
+
+    const otherMap = (draft.household as any).other_services_selected || {};
+    return !!(otherMap[service.id] || otherMap[service.name]);
+  };
+
+  const handleServiceToggle = (service: any, checked: boolean) => {
+    const nameLower = service.name.toLowerCase();
+    const nextHousehold = { ...draft.household };
+    const nextSelected = { ...((draft.household as any).other_services_selected || {}) };
+
+    if (nameLower.includes('lamination')) {
+      nextHousehold.lamination = checked;
+    } else if (nameLower.includes('e-sevai') || nameLower.includes('sevai')) {
+      nextHousehold.e_sevai_service_charges = checked;
+    } else if (nameLower.includes('digital safety') || nameLower.includes('safety')) {
+      nextHousehold.digital_safety_measures = checked;
+    }
+
+    nextSelected[service.id] = checked;
+    nextSelected[service.name] = checked;
+    (nextHousehold as any).other_services_selected = nextSelected;
+
+    setDraft(prev => ({
+      ...prev,
+      household: nextHousehold
+    }));
+  };
 
   // Auto-fetch full details if editing an existing survey with missing or incomplete member details
   useEffect(() => {
@@ -1421,53 +1464,33 @@ export default function SurveyForm() {
               <p className="text-sm text-gray-500 mb-4">Select the services provided to or accessed by this household.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="flex items-center gap-3 p-4 rounded-xl border bg-gray-50 hover:bg-gray-100 cursor-pointer transition-all shadow-sm">
-                  <input
-                    type="checkbox"
-                    className="w-5 h-5 text-accent border-gray-300 rounded focus:ring-accent"
-                    checked={draft.household.lamination || false}
-                    onChange={e => setDraft({
-                      ...draft,
-                      household: { ...draft.household, lamination: e.target.checked }
-                    })}
-                  />
-                  <div>
-                    <span className="font-semibold text-gray-900 block text-sm">Lamination</span>
-                    <span className="text-xs text-gray-500">Lamination of documents/cards</span>
-                  </div>
-                </label>
+                {(availableServices.length > 0 ? availableServices : [
+                  { id: 'os-1', sno: '1', name: 'Lamination', description: 'Lamination of documents/cards' },
+                  { id: 'os-2', sno: '2', name: 'E-Sevai Service Charges', description: 'Charges for online government service portal submissions' },
+                  { id: 'os-3', sno: '3', name: 'Digital Safety Measures', description: 'Awareness and implementation of safety precautions online' }
+                ]).map((service) => {
+                  const isChecked = isServiceChecked(service);
 
-                <label className="flex items-center gap-3 p-4 rounded-xl border bg-gray-50 hover:bg-gray-100 cursor-pointer transition-all shadow-sm">
-                  <input
-                    type="checkbox"
-                    className="w-5 h-5 text-accent border-gray-300 rounded focus:ring-accent"
-                    checked={draft.household.e_sevai_service_charges || false}
-                    onChange={e => setDraft({
-                      ...draft,
-                      household: { ...draft.household, e_sevai_service_charges: e.target.checked }
-                    })}
-                  />
-                  <div>
-                    <span className="font-semibold text-gray-900 block text-sm">E-Sevai Service Charges</span>
-                    <span className="text-xs text-gray-500">Charges for online government service portal submissions</span>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-3 p-4 rounded-xl border bg-gray-50 hover:bg-gray-100 cursor-pointer transition-all shadow-sm">
-                  <input
-                    type="checkbox"
-                    className="w-5 h-5 text-accent border-gray-300 rounded focus:ring-accent"
-                    checked={draft.household.digital_safety_measures || false}
-                    onChange={e => setDraft({
-                      ...draft,
-                      household: { ...draft.household, digital_safety_measures: e.target.checked }
-                    })}
-                  />
-                  <div>
-                    <span className="font-semibold text-gray-900 block text-sm">Digital Safety Measures</span>
-                    <span className="text-xs text-gray-500">Awareness and implementation of safety precautions online</span>
-                  </div>
-                </label>
+                  return (
+                    <label
+                      key={service.id || service.name}
+                      className="flex items-center gap-3 p-4 rounded-xl border bg-gray-50 hover:bg-gray-100 cursor-pointer transition-all shadow-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        className="w-5 h-5 text-accent border-gray-300 rounded focus:ring-accent"
+                        checked={isChecked}
+                        onChange={e => handleServiceToggle(service, e.target.checked)}
+                      />
+                      <div>
+                        <span className="font-semibold text-gray-900 block text-sm">{service.name}</span>
+                        {service.description && (
+                          <span className="text-xs text-gray-500">{service.description}</span>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           )}

@@ -390,4 +390,25 @@ export async function updateLeaveRequestStatusInSupabase(id: string, status: 'ap
   }
 }
 
+export async function fetchOtherServicesList(): Promise<Array<{ id: string; sno: string; name: string; description?: string }>> {
+  try {
+    const supabase = getSupabase() as any;
+    const { data, error } = await supabase.from('other_services_list').select('*').order('sno', { ascending: true });
+    if (error) throw error;
+    if (data && data.length > 0) return data;
+  } catch (err) {
+    console.warn("Failed to fetch other_services_list from Supabase:", err);
+  }
+  const local = localStorage.getItem('care_portal_other_services');
+  if (local) {
+    try { return JSON.parse(local); } catch (e) {}
+  }
+  return [
+    { id: 'os-1', sno: '1', name: 'Lamination', description: 'Lamination services for document safety' },
+    { id: 'os-2', sno: '2', name: 'E-Sevai Service Charges', description: 'Assistance with service charges for digital entitlements' },
+    { id: 'os-3', sno: '3', name: 'Digital Safety Measures', description: 'Training/support for digital safety of files' }
+  ];
+}
+
+
 
