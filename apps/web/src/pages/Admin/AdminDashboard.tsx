@@ -2263,6 +2263,24 @@ function SurveyDetailPanel({ survey, onClose }: { survey: DraftSurvey; onClose: 
                   {survey.household.digital_safety_measures ? 'Yes' : 'No'}
                 </span>
               </div>
+              {(() => {
+                const otherSelected = (survey.household as any).other_services_selected || {};
+                const customEntries = Object.entries(otherSelected).filter(([key]) => 
+                  !key.toLowerCase().includes('lamination') && 
+                  !key.toLowerCase().includes('e-sevai') && 
+                  !key.toLowerCase().includes('sevai') && 
+                  !key.toLowerCase().includes('safety') &&
+                  !key.startsWith('os-')
+                );
+                return customEntries.map(([name, isChecked]) => (
+                  <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                    <span style={{ color: '#475569' }}>{name}</span>
+                    <span style={{ fontWeight: 600, color: isChecked ? '#10b981' : '#64748b' }}>
+                      {isChecked ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                ));
+              })()}
             </div>
           </Section>
 

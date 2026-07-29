@@ -48,32 +48,43 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
     }
   }
 
+  const hhPayload: any = {
+    date: draft.household.date,
+    staff_name: draft.household.staff_name,
+    hamlet_code: draft.household.hamlet_code,
+    hamlet_name: draft.household.hamlet_name,
+    household_number: draft.household.household_number,
+    individual_number: draft.household.individual_number,
+    block: draft.household.block,
+    village_panchayath: draft.household.village_panchayath,
+    village: draft.household.village,
+    door_no: draft.household.door_no,
+    street: draft.household.street,
+    economic_status: draft.household.economic_status,
+    religion: draft.household.religion,
+    community: draft.household.community,
+    lamination: draft.household.lamination ?? false,
+    e_sevai_service_charges: draft.household.e_sevai_service_charges ?? false,
+    digital_safety_measures: draft.household.digital_safety_measures ?? false,
+    other_services_selected: (draft.household as any).other_services_selected || {},
+    remarks: draft.household.remarks
+  };
+
   if (existingHh) {
     // 1. Update existing household
-    const { error: hhError } = await supabase
+    let { error: hhError } = await supabase
       .from('households')
-      .update({
-        date: draft.household.date,
-        staff_name: draft.household.staff_name,
-        hamlet_code: draft.household.hamlet_code,
-        hamlet_name: draft.household.hamlet_name,
-        household_number: draft.household.household_number,
-        individual_number: draft.household.individual_number,
-        block: draft.household.block,
-        village_panchayath: draft.household.village_panchayath,
-        village: draft.household.village,
-        door_no: draft.household.door_no,
-        street: draft.household.street,
-        economic_status: draft.household.economic_status,
-        religion: draft.household.religion,
-        community: draft.household.community,
-        lamination: draft.household.lamination ?? false,
-        e_sevai_service_charges: draft.household.e_sevai_service_charges ?? false,
-        digital_safety_measures: draft.household.digital_safety_measures ?? false,
-        remarks: draft.household.remarks,
-        updated_at: new Date().toISOString()
-      })
+      .update({ ...hhPayload, updated_at: new Date().toISOString() })
       .eq('id', householdId);
+
+    if (hhError && hhError.message && hhError.message.toLowerCase().includes('other_services_selected')) {
+      delete hhPayload.other_services_selected;
+      const retry = await supabase
+        .from('households')
+        .update({ ...hhPayload, updated_at: new Date().toISOString() })
+        .eq('id', householdId);
+      hhError = retry.error;
+    }
 
     if (hhError) throw hhError;
 
@@ -103,29 +114,17 @@ export async function syncDraftToSupabase(draft: DraftSurvey) {
       draft.id = householdId;
     }
 
-    const { error: hhError } = await supabase
+    let { error: hhError } = await supabase
       .from('households')
-      .insert([{
-        id: householdId,
-        date: draft.household.date,
-        staff_name: draft.household.staff_name,
-        hamlet_code: draft.household.hamlet_code,
-        hamlet_name: draft.household.hamlet_name,
-        household_number: draft.household.household_number,
-        individual_number: draft.household.individual_number,
-        block: draft.household.block,
-        village_panchayath: draft.household.village_panchayath,
-        village: draft.household.village,
-        door_no: draft.household.door_no,
-        street: draft.household.street,
-        economic_status: draft.household.economic_status,
-        religion: draft.household.religion,
-        community: draft.household.community,
-        lamination: draft.household.lamination ?? false,
-        e_sevai_service_charges: draft.household.e_sevai_service_charges ?? false,
-        digital_safety_measures: draft.household.digital_safety_measures ?? false,
-        remarks: draft.household.remarks
-      }]);
+      .insert([{ id: householdId, ...hhPayload }]);
+
+    if (hhError && hhError.message && hhError.message.toLowerCase().includes('other_services_selected')) {
+      delete hhPayload.other_services_selected;
+      const retry = await supabase
+        .from('households')
+        .insert([{ id: householdId, ...hhPayload }]);
+      hhError = retry.error;
+    }
 
     if (hhError) throw hhError;
   }

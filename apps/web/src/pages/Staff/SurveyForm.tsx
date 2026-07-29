@@ -259,7 +259,7 @@ export default function SurveyForm() {
   }, [activeTab]);
 
   const isServiceChecked = (service: any) => {
-    const nameLower = service.name.toLowerCase();
+    const nameLower = (service.name || '').toLowerCase();
     if (nameLower.includes('lamination')) return !!draft.household.lamination;
     if (nameLower.includes('e-sevai') || nameLower.includes('sevai')) return !!draft.household.e_sevai_service_charges;
     if (nameLower.includes('digital safety') || nameLower.includes('safety')) return !!draft.household.digital_safety_measures;
@@ -269,26 +269,31 @@ export default function SurveyForm() {
   };
 
   const handleServiceToggle = (service: any, checked: boolean) => {
-    const nameLower = service.name.toLowerCase();
-    const nextHousehold = { ...draft.household };
-    const nextSelected = { ...((draft.household as any).other_services_selected || {}) };
+    const nameLower = (service.name || '').toLowerCase();
 
-    if (nameLower.includes('lamination')) {
-      nextHousehold.lamination = checked;
-    } else if (nameLower.includes('e-sevai') || nameLower.includes('sevai')) {
-      nextHousehold.e_sevai_service_charges = checked;
-    } else if (nameLower.includes('digital safety') || nameLower.includes('safety')) {
-      nextHousehold.digital_safety_measures = checked;
-    }
+    setDraft(prev => {
+      const currentHh = prev.household || {};
+      const currentSelected = { ...((currentHh as any).other_services_selected || {}) };
 
-    nextSelected[service.id] = checked;
-    nextSelected[service.name] = checked;
-    (nextHousehold as any).other_services_selected = nextSelected;
+      const nextHh = { ...currentHh };
 
-    setDraft(prev => ({
-      ...prev,
-      household: nextHousehold
-    }));
+      if (nameLower.includes('lamination')) {
+        nextHh.lamination = checked;
+      } else if (nameLower.includes('e-sevai') || nameLower.includes('sevai')) {
+        nextHh.e_sevai_service_charges = checked;
+      } else if (nameLower.includes('digital safety') || nameLower.includes('safety')) {
+        nextHh.digital_safety_measures = checked;
+      }
+
+      if (service.id) currentSelected[service.id] = checked;
+      if (service.name) currentSelected[service.name] = checked;
+      (nextHh as any).other_services_selected = currentSelected;
+
+      return {
+        ...prev,
+        household: nextHh
+      };
+    });
   };
 
   // Auto-fetch full details if editing an existing survey with missing or incomplete member details
