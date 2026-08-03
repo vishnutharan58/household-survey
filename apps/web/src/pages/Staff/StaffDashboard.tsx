@@ -116,7 +116,6 @@ export default function StaffDashboard() {
           .from('staff_attendance')
           .select('*')
           .eq('email', user.email)
-          .gte('login_time', `${todayStr}T00:00:00Z`)
           .order('login_time', { ascending: false })
           .limit(1);
           
@@ -140,7 +139,7 @@ export default function StaffDashboard() {
         const todayStr = new Date().toISOString().split('T')[0];
         const localLogs = localStorage.getItem('care_attendance_logs');
         const logs = localLogs ? JSON.parse(localLogs) : [];
-        const todayLog = logs.find((l: any) => l.email === user.email && l.loginTime.startsWith(todayStr));
+        const todayLog = logs.findLast((l: any) => l.email === user.email);
         
         if (todayLog) {
           setCheckInTime(todayLog.loginTime);
@@ -205,13 +204,12 @@ export default function StaffDashboard() {
           
         if (error) throw error;
       } else {
-        const todayStr = new Date().toISOString().split('T')[0];
         const { data } = await supabase
           .from('staff_attendance')
           .select('id')
           .eq('email', user.email)
-          .gte('login_time', `${todayStr}T00:00:00Z`)
           .is('logout_time', null)
+          .order('login_time', { ascending: false })
           .limit(1);
           
         if (data && data.length > 0) {
@@ -225,10 +223,9 @@ export default function StaffDashboard() {
       setAttendanceStatus('checked_out');
     } catch (err) {
       console.warn("DB check-out failed, updating in localStorage:", err);
-      const todayStr = new Date().toISOString().split('T')[0];
       const localLogs = localStorage.getItem('care_attendance_logs');
       const logs = localLogs ? JSON.parse(localLogs) : [];
-      const logIdx = logs.findIndex((l: any) => l.email === user.email && l.loginTime.startsWith(todayStr) && !l.logoutTime);
+      const logIdx = logs.findLastIndex((l: any) => l.email === user.email && !l.logoutTime);
       
       if (logIdx !== -1) {
         logs[logIdx].logoutTime = nowISO;
