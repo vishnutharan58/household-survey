@@ -359,7 +359,28 @@ const INITIAL_OTHER_SERVICES = [
 ];
 
 const INITIAL_SEA_MEMBERS = [
-  { id: 'sea-1', name: 'Sample SEA Member', details: 'This is the details' }
+  { id: 'sea-1', name: 'Stephen Rani E', details: 'Age: 54\nGender: Female\nContact Number: 9965707974\nVillage: Pozhikarai' },
+  { id: 'sea-2', name: 'Caroline Beula R', details: 'Age: 42\nGender: Female\nContact Number: 7010156787\nVillage: Arockiyapuram' },
+  { id: 'sea-3', name: 'Jasmine S', details: 'Age: 47\nGender: Female\nContact Number: 8610481420\nVillage: Manakudy' },
+  { id: 'sea-4', name: 'Annal Anitha', details: 'Age: 54\nGender: Female\nContact Number: 8489807484\nVillage: Arockiyapuram' },
+  { id: 'sea-5', name: 'Arul Mettil S', details: 'Age: 44\nGender: Female\nContact Number: 9363291711\nVillage: Rajakamangalam Thurai' },
+  { id: 'sea-6', name: 'Regi', details: 'Age: 60\nGender: Female\nContact Number: 9442788685\nVillage: Rajakamangalam Thurai' },
+  { id: 'sea-7', name: 'Malar Mathi', details: 'Age: 40\nGender: Female\nContact Number: 8807167184\nVillage: Kodimunai ' },
+  { id: 'sea-8', name: 'Amala Nayagi', details: 'Age: 59\nGender: Female\nContact Number: 8300787953\nVillage: Manakudy' },
+  { id: 'sea-9', name: 'Jenifer', details: 'Age: 36\nGender: Female\nContact Number: 8489097544\nVillage: Kodimunai ' },
+  { id: 'sea-10', name: 'Fathima Mary', details: 'Age: 55\nGender: Female\nContact Number: 9486356868\nVillage: Puthenthurai' },
+  { id: 'sea-11', name: 'Sahaya Gyana Farina S', details: 'Age: 34\nGender: Female\nContact Number: 9489263092\nVillage: Kesavanputhenthurai ' },
+  { id: 'sea-12', name: 'Sumith Raj', details: 'Age: 30\nGender: Female\nContact Number: 8903992033\nVillage: Pallam' },
+  { id: 'sea-13', name: 'Queen Jasintha J', details: 'Age: 54\nGender: Female\nContact Number: 6382570691\nVillage: Keezha Manakudy' },
+  { id: 'sea-14', name: 'Jhonsy S.A', details: 'Age: 61\nGender: Female\nContact Number: 9655474782\nVillage: Keezha Manakudy' },
+  { id: 'sea-15', name: 'Dhoni S', details: 'Age: 38\nGender: Female\nContact Number: 9500778467\nVillage: Kovalam' },
+  { id: 'sea-16', name: 'Vijaya Rani S', details: 'Age: 47\nGender: Female\nContact Number: 9786460210\nVillage: Simon Colony' },
+  { id: 'sea-17', name: 'Shanthi A', details: 'Age: 39\nGender: Female\nContact Number: 9488613981\nVillage: Vaniyakudi' },
+  { id: 'sea-18', name: 'Fransiscal A', details: 'Age: 55\nGender: Female\nContact Number: 8098173221\nVillage: Kesavanputhenthurai ' },
+  { id: 'sea-19', name: 'Anthoniyammal R', details: 'Age: 56\nGender: Female\nContact Number: 9486858564\nVillage: Rajakamangalam Thurai' },
+  { id: 'sea-20', name: 'Inthirayath', details: 'Age: 72\nGender: Female\nContact Number: 9752095067\nVillage: Rajakamangalam Thurai' },
+  { id: 'sea-21', name: 'Sahaya Fernisha J', details: 'Age: 34\nGender: Female\nContact Number: 9487830812\nVillage: Arockiyapuram' },
+  { id: 'sea-22', name: 'Gilda L', details: 'Age: 50\nGender: Female\nContact Number: 9751993754\nVillage: Muttom' }
 ];
 
 // ─── Image Upload Utility with Base64 Fallback ──────────────────────
