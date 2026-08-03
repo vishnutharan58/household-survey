@@ -357,6 +357,11 @@ const INITIAL_OTHER_SERVICES = [
   { id: 'os-2', sno: '2', name: 'E-Sevai Service Charges', description: 'Assistance with service charges for digital entitlements' },
   { id: 'os-3', sno: '3', name: 'Digital Safety Measures', description: 'Training/support for digital safety of files' }
 ];
+
+const INITIAL_SEA_MEMBERS = [
+  { id: 'sea-1', name: 'Sample SEA Member', details: 'This is the details' }
+];
+
 // ─── Image Upload Utility with Base64 Fallback ──────────────────────
 const uploadEventImage = async (file: File, eventId: string): Promise<string> => {
   try {
@@ -1114,7 +1119,7 @@ function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
 // ─── Staff & Event Details Modal ───────────────────────────────────
 function StaffDetailsModal({ onClose }: { onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services'>('staff');
+  const [activeTab, setActiveTab] = useState<'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services' | 'sea_members'>('staff');
   
   const [eventsList, setEventsList] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
@@ -1123,6 +1128,8 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
   const [collectivesList, setCollectivesList] = useState<any[]>([]);
   const [attendanceList, setAttendanceList] = useState<any[]>([]);
   const [servicesList, setServicesList] = useState<any[]>([]);
+  const [seaMembersList, setSeaMembersList] = useState<any[]>([]);
+  const [selectedSeaMember, setSelectedSeaMember] = useState<any | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [isUsingDb, setIsUsingDb] = useState(false);
@@ -1191,6 +1198,10 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
       setServicesList(combinedServices);
       localStorage.setItem('care_portal_other_services', JSON.stringify(combinedServices));
       setAttendanceList(dbAttendance || []);
+      
+      const localSeaMembers = localStorage.getItem('care_sea_members');
+      setSeaMembersList(localSeaMembers ? JSON.parse(localSeaMembers) : INITIAL_SEA_MEMBERS);
+      
       setIsUsingDb(true);
     } catch (err) {
       console.warn("Failed to load from database, using localStorage fallbacks:", err);
@@ -1216,6 +1227,9 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
       
       const localAttendance = localStorage.getItem('care_attendance_logs');
       setAttendanceList(localAttendance ? JSON.parse(localAttendance) : []);
+
+      const localSeaMembers = localStorage.getItem('care_sea_members');
+      setSeaMembersList(localSeaMembers ? JSON.parse(localSeaMembers) : INITIAL_SEA_MEMBERS);
     } finally {
       setLoading(false);
     }
@@ -1567,7 +1581,8 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
             { id: 'schemes', label: 'List of Schemes', icon: <Activity size={16} /> },
             { id: 'collectives', label: 'Community Collectives', icon: <Compass size={16} /> },
             { id: 'services', label: 'Other Services', icon: <FileCheck2 size={16} /> },
-            { id: 'attendance', label: 'Attendance Log', icon: <Clock size={16} /> }
+            { id: 'attendance', label: 'Attendance Log', icon: <Clock size={16} /> },
+            { id: 'sea_members', label: 'SEA Member', icon: <User2 size={16} /> }
           ].map(tab => (
             <button
               key={tab.id}
@@ -2003,6 +2018,44 @@ function StaffDetailsModal({ onClose }: { onClose: () => void }) {
                       </table>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ─── SEA MEMBERS TAB ─── */}
+              {activeTab === 'sea_members' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B3A5C', margin: 0 }}>SEA Members</h3>
+                      <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px', margin: 0 }}>Social Entitlement Animators Details</p>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                    {seaMembersList.map((m) => (
+                      <div 
+                        key={m.id} 
+                        onClick={() => setSelectedSeaMember(selectedSeaMember?.id === m.id ? null : m)}
+                        style={{ 
+                          background: 'white', borderRadius: '12px', border: selectedSeaMember?.id === m.id ? '2px solid #2A9D8F' : '1px solid #e2e8f0', 
+                          padding: '16px', cursor: 'pointer', transition: 'all 0.2s ease',
+                          boxShadow: selectedSeaMember?.id === m.id ? '0 4px 12px rgba(42,157,143,0.1)' : 'none'
+                        }}
+                      >
+                        <div>
+                          <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1B3A5C', margin: '0 0 6px' }}>{m.name}</h4>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>Click to {selectedSeaMember?.id === m.id ? 'hide' : 'view'} details</span>
+                        </div>
+                        {selectedSeaMember?.id === m.id && (
+                          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0', animation: 'fadeIn 0.2s ease-in' }}>
+                            <p style={{ fontSize: '0.85rem', color: '#475569', margin: 0, whiteSpace: 'pre-wrap' }}>
+                              {m.details}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </>
