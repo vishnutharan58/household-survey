@@ -7,7 +7,7 @@ import {
   LayoutDashboard, ClipboardList, Search, Eye, X, MapPin,
   CalendarDays, Calendar, User2, FileCheck2, ChevronDown, ChevronUp,
   Pencil, CheckCheck, XCircle, Clock, Bell, ChevronLeft, ChevronRight,
-  PlusCircle, Trash2, UploadCloud, Edit, Award, Compass, FileText, Activity
+  PlusCircle, Trash2, UploadCloud, Edit, Award, Compass, FileText, Activity, Plus
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
