@@ -1138,6 +1138,56 @@ function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   );
 }
 
+// ─── Sub-Modal: EditSeaMemberModal ──────────────────────────────
+interface EditSeaMemberModalProps {
+  member: any | null;
+  onClose: () => void;
+  onSave: (data: any) => void;
+}
+
+function EditSeaMemberModal({ member, onClose, onSave }: EditSeaMemberModalProps) {
+  const [name, setName] = useState(member?.name || '');
+  const [details, setDetails] = useState(member?.details || '');
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name) {
+      alert("Name is required.");
+      return;
+    }
+    onSave({
+      ...member,
+      name,
+      details
+    });
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={onClose}>
+      <form onSubmit={handleFormSubmit} style={{ width: '100%', maxWidth: '500px', background: 'white', borderRadius: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+        <div style={{ background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>{member ? '📝 Edit SEA Member' : '➕ Add SEA Member'}</h3>
+          <button type="button" onClick={onClose} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}><X size={16} /></button>
+        </div>
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', maxHeight: '70vh' }}>
+          <div>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Full Name</label>
+            <input type="text" placeholder="e.g. John Doe" value={name} onChange={e => setName(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.9rem' }} required />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Details</label>
+            <textarea placeholder="Age, Gender, Contact Number, Village..." value={details} onChange={e => setDetails(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.9rem', minHeight: '120px', resize: 'vertical' }} />
+          </div>
+        </div>
+        <div style={{ background: '#f8fafc', padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <button type="button" onClick={onClose} style={{ padding: '8px 16px', borderRadius: '8px', border: '1.5px solid #e2e8f0', background: 'white', color: '#64748b', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+          <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', color: 'white', fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(42,157,143,0.2)' }}>Save Member</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ─── Staff & Event Details Modal ───────────────────────────────────
 function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => void, initialTab?: 'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services' | 'sea_members' }) {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -1174,6 +1224,9 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
 
   const [editingService, setEditingService] = useState<any | null>(null);
   const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
+
+  const [editingSeaMember, setEditingSeaMember] = useState<any | null>(null);
+  const [isEditSeaMemberOpen, setIsEditSeaMemberOpen] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -1551,6 +1604,20 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
         console.error("Failed to delete other service:", err);
       }
     }
+  };
+
+  const handleSaveSeaMember = async (memberData: any) => {
+    const isNew = !memberData.id;
+    const finalId = memberData.id || 'sea-' + Date.now();
+    const preparedData = { ...memberData, id: finalId };
+    
+    const updated = isNew 
+      ? [...seaMembersList, preparedData] 
+      : seaMembersList.map(m => m.id === preparedData.id ? preparedData : m);
+    setSeaMembersList(updated);
+    localStorage.setItem('care_sea_members', JSON.stringify(updated));
+    
+    setIsEditSeaMemberOpen(false);
   };
 
   return (
@@ -2050,6 +2117,9 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                       <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B3A5C', margin: 0 }}>SEA Members</h3>
                       <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px', margin: 0 }}>Social Entitlement Animators Details</p>
                     </div>
+                    <button onClick={() => { setEditingSeaMember(null); setIsEditSeaMemberOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', color: 'white', padding: '8px 16px', borderRadius: '8px', border: 'none', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(42,157,143,0.2)' }}>
+                      <Plus size={16} /> Add Member
+                    </button>
                   </div>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
@@ -2063,9 +2133,20 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                           boxShadow: selectedSeaMember?.id === m.id ? '0 4px 12px rgba(42,157,143,0.1)' : 'none'
                         }}
                       >
-                        <div>
-                          <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1B3A5C', margin: '0 0 6px' }}>{m.name}</h4>
-                          <span style={{ fontSize: '0.7rem', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>Click to {selectedSeaMember?.id === m.id ? 'hide' : 'view'} details</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1B3A5C', margin: '0 0 6px' }}>{m.name}</h4>
+                            <span style={{ fontSize: '0.7rem', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>Click to {selectedSeaMember?.id === m.id ? 'hide' : 'view'} details</span>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingSeaMember(m); setIsEditSeaMemberOpen(true); }}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', borderRadius: '6px', transition: 'background 0.2s' }}
+                            onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                            onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                            title="Edit SEA Member"
+                          >
+                            <Edit size={14} />
+                          </button>
                         </div>
                         {selectedSeaMember?.id === m.id && (
                           <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0', animation: 'fadeIn 0.2s ease-in' }}>
@@ -2153,6 +2234,14 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
           service={editingService}
           onClose={() => setIsEditServiceOpen(false)}
           onSave={handleSaveService}
+        />
+      )}
+
+      {isEditSeaMemberOpen && (
+        <EditSeaMemberModal
+          member={editingSeaMember}
+          onClose={() => setIsEditSeaMemberOpen(false)}
+          onSave={handleSaveSeaMember}
         />
       )}
 
