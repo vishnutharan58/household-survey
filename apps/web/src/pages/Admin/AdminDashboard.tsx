@@ -1242,6 +1242,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
       const { data: dbSchemes } = await supabase.from('schemes_list').select('*').order('sno', { ascending: true });
       const { data: dbAttendance } = await supabase.from('staff_attendance').select('*').order('login_time', { ascending: false });
       const { data: dbServices } = await supabase.from('other_services_list').select('*').order('sno', { ascending: true });
+      const { data: dbSeaMembers } = await supabase.from('sea_members_list').select('*');
       
       setEventsList(dbEvents && dbEvents.length > 0 ? dbEvents.map(mapDbEventToUi) : EVENT_DETAILS);
       
@@ -1273,8 +1274,13 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
       localStorage.setItem('care_portal_other_services', JSON.stringify(combinedServices));
       setAttendanceList(dbAttendance || []);
       
-      const localSeaMembers = localStorage.getItem('care_sea_members');
-      setSeaMembersList(localSeaMembers ? JSON.parse(localSeaMembers) : INITIAL_SEA_MEMBERS);
+      if (dbSeaMembers && dbSeaMembers.length > 0) {
+        setSeaMembersList(dbSeaMembers);
+        localStorage.setItem('care_sea_members', JSON.stringify(dbSeaMembers));
+      } else {
+        const localSeaMembers = localStorage.getItem('care_sea_members');
+        setSeaMembersList(localSeaMembers ? JSON.parse(localSeaMembers) : INITIAL_SEA_MEMBERS);
+      }
       
       setIsUsingDb(true);
     } catch (err) {
@@ -1616,8 +1622,40 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
       : seaMembersList.map(m => m.id === preparedData.id ? preparedData : m);
     setSeaMembersList(updated);
     localStorage.setItem('care_sea_members', JSON.stringify(updated));
+
+    if (isUsingDb) {
+      try {
+        const supabase = getSupabase() as any;
+        const dbObj = { id: preparedData.id, name: preparedData.name, details: preparedData.details };
+        if (isNew) {
+          await supabase.from('sea_members_list').insert([dbObj]);
+        } else {
+          await supabase.from('sea_members_list').update(dbObj).eq('id', preparedData.id);
+        }
+        await loadData();
+      } catch (err) {
+        console.error("Failed to save SEA member:", err);
+      }
+    }
     
     setIsEditSeaMemberOpen(false);
+  };
+
+  const handleDeleteSeaMember = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this SEA member?")) return;
+    const updated = seaMembersList.filter(m => m.id !== id);
+    setSeaMembersList(updated);
+    localStorage.setItem('care_sea_members', JSON.stringify(updated));
+
+    if (isUsingDb) {
+      try {
+        const supabase = getSupabase() as any;
+        await supabase.from('sea_members_list').delete().eq('id', id);
+        await loadData();
+      } catch (err) {
+        console.error("Failed to delete SEA member:", err);
+      }
+    }
   };
 
   return (
@@ -2138,15 +2176,26 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                             <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1B3A5C', margin: '0 0 6px' }}>{m.name}</h4>
                             <span style={{ fontSize: '0.7rem', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>Click to {selectedSeaMember?.id === m.id ? 'hide' : 'view'} details</span>
                           </div>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setEditingSeaMember(m); setIsEditSeaMemberOpen(true); }}
-                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', borderRadius: '6px', transition: 'background 0.2s' }}
-                            onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                            onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                            title="Edit SEA Member"
-                          >
-                            <Edit size={14} />
-                          </button>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setEditingSeaMember(m); setIsEditSeaMemberOpen(true); }}
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', borderRadius: '6px', transition: 'background 0.2s' }}
+                              onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                              title="Edit SEA Member"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteSeaMember(m.id); }}
+                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', borderRadius: '6px', transition: 'background 0.2s' }}
+                              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+                              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                              title="Delete SEA Member"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
                         {selectedSeaMember?.id === m.id && (
                           <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0', animation: 'fadeIn 0.2s ease-in' }}>
