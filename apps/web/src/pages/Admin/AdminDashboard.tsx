@@ -1118,8 +1118,8 @@ function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 }
 
 // ─── Staff & Event Details Modal ───────────────────────────────────
-function StaffDetailsModal({ onClose }: { onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services' | 'sea_members'>('staff');
+function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => void, initialTab?: 'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services' | 'sea_members' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   
   const [eventsList, setEventsList] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
@@ -3011,11 +3011,13 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
 // ─── Overview Tab ───────────────────────────────────────────────────
 function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => void, stats: any, loading: boolean, surveys: DraftSurvey[] }) {
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  const [staffModalInitialTab, setStaffModalInitialTab] = useState<'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services' | 'sea_members'>('staff');
   const [staffCount, setStaffCount] = useState(9);
   const [activeAttendanceToday, setActiveAttendanceToday] = useState(0);
   const [collectivesCount, setCollectivesCount] = useState(4);
   const [totalMeetings, setTotalMeetings] = useState(13);
   const [totalParticipants, setTotalParticipants] = useState(156);
+  const [seaMembersCount, setSeaMembersCount] = useState(1);
   
   useEffect(() => {
     // Load staff count
@@ -3042,6 +3044,11 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
     setCollectivesCount(ccList.length);
     setTotalMeetings(ccList.reduce((acc: number, curr: any) => acc + (parseInt(curr.meetings_conducted) || 0), 0));
     setTotalParticipants(ccList.reduce((acc: number, curr: any) => acc + (parseInt(curr.participants_count) || 0), 0));
+
+    // Load SEA Members count
+    const localSeaMembers = localStorage.getItem('care_sea_members');
+    const seaList = localSeaMembers ? JSON.parse(localSeaMembers) : INITIAL_SEA_MEMBERS;
+    setSeaMembersCount(seaList.length);
   }, []);
 
   if (loading || !stats) {
@@ -3130,8 +3137,9 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
     { label: 'Total Households', value: totalHouseholds.toLocaleString(), icon: Home, colorClass: 'blue', iconBg: 'linear-gradient(135deg,#3b82f6,#60a5fa)', trend: 'Overall' },
     { label: 'Total Individuals', value: totalMembers.toLocaleString(), icon: Users, colorClass: 'green', iconBg: 'linear-gradient(135deg,#10b981,#34d399)', trend: 'Overall' },
     { label: 'BPL Count', value: bplCount.toLocaleString(), icon: AlertTriangle, colorClass: 'amber', iconBg: 'linear-gradient(135deg,#f59e0b,#fbbf24)', trend: `${bplPercent}% of total` },
-    { label: 'Active Staff', value: staffCount.toString(), icon: Users, colorClass: 'purple', iconBg: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', trend: `${hamletsCovered} hamlets covered`, clickable: true },
-    { label: 'Staff Attendance', value: `Present: ${activeAttendanceToday} / ${staffCount}`, icon: Clock, colorClass: 'blue', iconBg: 'linear-gradient(135deg,#6366f1,#818cf8)', trend: 'Present Today', clickable: true },
+    { label: 'Active Staff', value: staffCount.toString(), icon: Users, colorClass: 'purple', iconBg: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', trend: `${hamletsCovered} hamlets covered`, clickable: true, tabId: 'staff' },
+    { label: 'Staff Attendance', value: `Present: ${activeAttendanceToday} / ${staffCount}`, icon: Clock, colorClass: 'blue', iconBg: 'linear-gradient(135deg,#6366f1,#818cf8)', trend: 'Present Today', clickable: true, tabId: 'attendance' },
+    { label: 'SEA Members', value: seaMembersCount.toString(), icon: User2, colorClass: 'teal', iconBg: 'linear-gradient(135deg,#14b8a6,#2dd4bf)', trend: 'Social Entitlement Animators', clickable: true, tabId: 'sea_members' },
   ];
 
   // Helper to sort by hamlet code in increasing numeric order (e.g. 1.1 -> 2.1 -> 10.1)
@@ -3185,12 +3193,12 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
       </div>
 
       <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '28px' }}>
-        {statCards.map(({ label, value, icon: Icon, colorClass, iconBg, trend, clickable }) => (
+        {statCards.map(({ label, value, icon: Icon, colorClass, iconBg, trend, clickable, tabId }) => (
           <div
             key={label}
             className={`stat-card ${colorClass} animate-fade-in-up`}
             style={clickable ? { cursor: 'pointer', transition: 'transform 200ms ease, box-shadow 200ms ease' } : {}}
-            onClick={clickable ? () => setIsStaffModalOpen(true) : undefined}
+            onClick={clickable ? () => { setStaffModalInitialTab((tabId as any) || 'staff'); setIsStaffModalOpen(true); } : undefined}
             onMouseOver={clickable ? e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.08)'; } : undefined}
             onMouseOut={clickable ? e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; } : undefined}
           >
@@ -3345,7 +3353,7 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
       </div>
 
       {isStaffModalOpen && (
-        <StaffDetailsModal onClose={() => setIsStaffModalOpen(false)} />
+        <StaffDetailsModal onClose={() => setIsStaffModalOpen(false)} initialTab={staffModalInitialTab} />
       )}
     </div>
   );
@@ -3763,10 +3771,10 @@ export default function AdminDashboard() {
   };
 
   const TABS: Array<{ id: 'overview' | 'surveys' | 'requests' | 'leaves', label: string, icon: any, badge?: number }> = [
-    { id: 'overview',  label: 'Overview',           icon: LayoutDashboard },
-    { id: 'surveys',   label: 'Submitted Surveys',  icon: ClipboardList,   badge: submittedCount },
-    { id: 'requests',  label: 'Edit Requests',       icon: Bell,            badge: pendingRequestCount },
-    { id: 'leaves',    label: 'Leave Requests',      icon: CalendarDays,    badge: pendingLeaveCount },
+    { id: 'overview',    label: 'Overview',           icon: LayoutDashboard },
+    { id: 'surveys',     label: 'Submitted Surveys',  icon: ClipboardList,   badge: submittedCount },
+    { id: 'requests',    label: 'Edit Requests',       icon: Bell,            badge: pendingRequestCount },
+    { id: 'leaves',      label: 'Leave Requests',      icon: CalendarDays,    badge: pendingLeaveCount },
   ];
 
   return (
@@ -3842,10 +3850,10 @@ export default function AdminDashboard() {
 
       {/* Main content */}
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview'  && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} surveys={submittedSurveys} />}
-        {activeTab === 'surveys'   && <SubmittedSurveysTab surveys={submittedSurveys} />}
-        {activeTab === 'requests'  && <EditRequestsTab />}
-        {activeTab === 'leaves'    && <LeaveRequestsTab />}
+        {activeTab === 'overview'    && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} surveys={submittedSurveys} />}
+        {activeTab === 'surveys'     && <SubmittedSurveysTab surveys={submittedSurveys} />}
+        {activeTab === 'requests'    && <EditRequestsTab />}
+        {activeTab === 'leaves'      && <LeaveRequestsTab />}
       </main>
     </div>
   );
