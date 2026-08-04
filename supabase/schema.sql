@@ -1,10 +1,19 @@
 -- Create ENUM types
-CREATE TYPE economic_status_enum AS ENUM ('BPL', 'APL', 'Others');
-CREATE TYPE gender_enum AS ENUM ('Male', 'Female', 'Other');
-CREATE TYPE marital_status_enum AS ENUM ('Married', 'Unmarried', 'Widow', 'Child');
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'economic_status_enum') THEN
+    CREATE TYPE economic_status_enum AS ENUM ('BPL', 'APL', 'Others');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'gender_enum') THEN
+    CREATE TYPE gender_enum AS ENUM ('Male', 'Female', 'Other');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'marital_status_enum') THEN
+    CREATE TYPE marital_status_enum AS ENUM ('Married', 'Unmarried', 'Widow', 'Child');
+  END IF;
+END $$;
 
 -- Create Households table
-CREATE TABLE public.households (
+CREATE TABLE IF NOT EXISTS public.households (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   sno SERIAL,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -30,7 +39,7 @@ CREATE TABLE public.households (
 );
 
 -- Create Members table
-CREATE TABLE public.members (
+CREATE TABLE IF NOT EXISTS public.members (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   household_id UUID NOT NULL REFERENCES public.households(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -49,7 +58,7 @@ CREATE TABLE public.members (
 );
 
 -- Create Documents Available table (Per Member)
-CREATE TABLE public.documents (
+CREATE TABLE IF NOT EXISTS public.documents (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   member_id UUID NOT NULL REFERENCES public.members(id) ON DELETE CASCADE UNIQUE,
   aadhaar_card BOOLEAN DEFAULT FALSE,
@@ -74,14 +83,14 @@ CREATE TABLE public.documents (
 -- Create Corrections Required table (Per Member)
 -- We use JSONB for sub-fields (Name, DOB, Address, Mobile Number, Guardian Name, Photo, Update, Others)
 -- Example: {"aadhaar_card": {"Name": true, "DOB": false}, "ration_card": {...}}
-CREATE TABLE public.corrections_required (
+CREATE TABLE IF NOT EXISTS public.corrections_required (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   member_id UUID NOT NULL REFERENCES public.members(id) ON DELETE CASCADE UNIQUE,
   corrections JSONB DEFAULT '{}'::jsonb
 );
 
 -- Create New Documents Needed table (Per Member)
-CREATE TABLE public.new_documents_needed (
+CREATE TABLE IF NOT EXISTS public.new_documents_needed (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   member_id UUID NOT NULL REFERENCES public.members(id) ON DELETE CASCADE UNIQUE,
   e_epic BOOLEAN DEFAULT FALSE,
@@ -102,7 +111,7 @@ CREATE TABLE public.new_documents_needed (
 );
 
 -- Create Base Documents Available table (Per Member)
-CREATE TABLE public.base_documents_available (
+CREATE TABLE IF NOT EXISTS public.base_documents_available (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   member_id UUID NOT NULL REFERENCES public.members(id) ON DELETE CASCADE UNIQUE,
   aadhaar_card BOOLEAN DEFAULT FALSE,
@@ -114,7 +123,7 @@ CREATE TABLE public.base_documents_available (
 );
 
 -- Create Corrections Made table (Per Member)
-CREATE TABLE public.corrections_made (
+CREATE TABLE IF NOT EXISTS public.corrections_made (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   member_id UUID NOT NULL REFERENCES public.members(id) ON DELETE CASCADE UNIQUE,
   corrections_made JSONB DEFAULT '{}'::jsonb
@@ -122,7 +131,7 @@ CREATE TABLE public.corrections_made (
 
 
 -- Create Schemes Accessed table (Per Member)
-CREATE TABLE public.schemes_accessed (
+CREATE TABLE IF NOT EXISTS public.schemes_accessed (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   member_id UUID NOT NULL REFERENCES public.members(id) ON DELETE CASCADE UNIQUE,
   old_age_pension BOOLEAN DEFAULT FALSE,
@@ -142,7 +151,7 @@ CREATE TABLE public.schemes_accessed (
 );
 
 -- Create Eligible Schemes table (Per Member)
-CREATE TABLE public.eligible_schemes (
+CREATE TABLE IF NOT EXISTS public.eligible_schemes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   member_id UUID NOT NULL REFERENCES public.members(id) ON DELETE CASCADE UNIQUE,
   old_age_pension BOOLEAN DEFAULT FALSE,
@@ -399,7 +408,7 @@ $$;
 
 
 -- Create Events table
-CREATE TABLE public.events (
+CREATE TABLE IF NOT EXISTS public.events (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   sno TEXT,
   activity TEXT NOT NULL,
