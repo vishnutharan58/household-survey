@@ -21,9 +21,11 @@ CREATE TABLE IF NOT EXISTS public.staff_details (
 ALTER TABLE public.staff_details ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for staff_details
+DROP POLICY IF EXISTS "Allow public read access to staff_details" ON public.staff_details;
 CREATE POLICY "Allow public read access to staff_details" 
   ON public.staff_details FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Admin full access staff_details" ON public.staff_details;
 CREATE POLICY "Admin full access staff_details" 
   ON public.staff_details FOR ALL USING (
     auth.jwt() ->> 'role' = 'admin' OR 
@@ -67,15 +69,19 @@ CREATE TABLE IF NOT EXISTS public.staff_attendance (
 ALTER TABLE public.staff_attendance ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for staff_attendance
+DROP POLICY IF EXISTS "Allow public read access to staff_attendance" ON public.staff_attendance;
 CREATE POLICY "Allow public read access to staff_attendance" 
   ON public.staff_attendance FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Allow staff to insert own attendance" ON public.staff_attendance;
 CREATE POLICY "Allow staff to insert own attendance" 
   ON public.staff_attendance FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow staff to update own attendance" ON public.staff_attendance;
 CREATE POLICY "Allow staff to update own attendance" 
   ON public.staff_attendance FOR UPDATE USING (true);
 
+DROP POLICY IF EXISTS "Admin full access staff_attendance" ON public.staff_attendance;
 CREATE POLICY "Admin full access staff_attendance" 
   ON public.staff_attendance FOR ALL USING (
     auth.jwt() ->> 'role' = 'admin' OR 
@@ -97,22 +103,39 @@ CREATE TABLE IF NOT EXISTS public.community_collectives (
 ALTER TABLE public.community_collectives ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for community_collectives
+DROP POLICY IF EXISTS "Allow public read access to community_collectives" ON public.community_collectives;
 CREATE POLICY "Allow public read access to community_collectives" 
   ON public.community_collectives FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Admin full access community_collectives" ON public.community_collectives;
 CREATE POLICY "Admin full access community_collectives" 
   ON public.community_collectives FOR ALL USING (
     auth.jwt() ->> 'role' = 'admin' OR 
     (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );
 
+DROP POLICY IF EXISTS "Allow staff to update community_collectives" ON public.community_collectives;
+CREATE POLICY "Allow staff to update community_collectives" 
+  ON public.community_collectives FOR UPDATE USING (true);
+  
+DROP POLICY IF EXISTS "Allow staff to insert community_collectives" ON public.community_collectives;
+CREATE POLICY "Allow staff to insert community_collectives" 
+  ON public.community_collectives FOR INSERT WITH CHECK (true);
+
 -- Seed initial collectives
 INSERT INTO public.community_collectives (sno, name, meetings_conducted, participants_count)
 VALUES
-  ('1', 'CC Muthamizh', 4, 48),
-  ('2', 'CC Leepuram', 3, 36),
-  ('3', 'CC Muttom', 3, 42),
-  ('4', 'CC Simon Colony', 3, 30)
+  ('1', 'Arockiyapuram - 1', 4, 117),
+  ('2', 'Manakudy 1', 3, 38),
+  ('3', 'Manakudy 2', 2, 16),
+  ('4', 'Puthenthurai - 1', 3, 36),
+  ('5', 'Puthenthurai - 2', 1, 21),
+  ('6', 'Kesavanputhenthurai', 3, 70),
+  ('7', 'Rajakamangalamthurai 1', 4, 74),
+  ('8', 'Rajakamangalamthurai 2', 1, 20),
+  ('9', 'Simon colony', 1, 20),
+  ('10', 'Kodimunai 1', 3, 60),
+  ('11', 'Kodimunai 2', 3, 47)
 ON CONFLICT DO NOTHING;
 
 -- 4. Create documents_list table
@@ -129,9 +152,11 @@ CREATE TABLE IF NOT EXISTS public.documents_list (
 ALTER TABLE public.documents_list ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for documents_list
+DROP POLICY IF EXISTS "Allow public read access to documents_list" ON public.documents_list;
 CREATE POLICY "Allow public read access to documents_list" 
   ON public.documents_list FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Admin full access documents_list" ON public.documents_list;
 CREATE POLICY "Admin full access documents_list" 
   ON public.documents_list FOR ALL USING (
     auth.jwt() ->> 'role' = 'admin' OR 
@@ -164,9 +189,11 @@ CREATE TABLE IF NOT EXISTS public.schemes_list (
 ALTER TABLE public.schemes_list ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for schemes_list
+DROP POLICY IF EXISTS "Allow public read access to schemes_list" ON public.schemes_list;
 CREATE POLICY "Allow public read access to schemes_list" 
   ON public.schemes_list FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Admin full access schemes_list" ON public.schemes_list;
 CREATE POLICY "Admin full access schemes_list" 
   ON public.schemes_list FOR ALL USING (
     auth.jwt() ->> 'role' = 'admin' OR 
@@ -184,7 +211,35 @@ VALUES
   ('6', 'CMCHIS', 'Chief Minister''s Comprehensive Health Insurance Scheme')
 ON CONFLICT DO NOTHING;
 
--- 6. Alter events table to add date, place, timing and resource person fields
+-- 6. Create events table if not exists, then add date, place, timing and resource person fields
+CREATE TABLE IF NOT EXISTS public.events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  sno TEXT,
+  activity TEXT NOT NULL,
+  planned_programs INTEGER DEFAULT 0,
+  achieved_programs INTEGER DEFAULT 0,
+  planned_participants INTEGER DEFAULT 0,
+  achieved_participants INTEGER DEFAULT 0,
+  images TEXT[] DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS on events table
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+
+-- Policies for events
+DROP POLICY IF EXISTS "Allow public read access to events" ON public.events;
+CREATE POLICY "Allow public read access to events" ON public.events
+  FOR SELECT USING (true);
+  
+DROP POLICY IF EXISTS "Admin full access events" ON public.events;
+CREATE POLICY "Admin full access events" 
+  ON public.events FOR ALL USING (
+    auth.jwt() ->> 'role' = 'admin' OR 
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+  );
+
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS event_date DATE;
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS place TEXT;
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS start_time TEXT;

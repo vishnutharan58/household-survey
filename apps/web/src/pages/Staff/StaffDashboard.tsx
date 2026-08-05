@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore, useDraftStore, useEditRequestStore, useLeaveRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail, fetchLeaveRequestsFromSupabase, createLeaveRequestInSupabase } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, PlusCircle, FileText, UploadCloud, MapPin, CheckCircle2, Clock, Pencil, Send, CheckCheck, XCircle, AlertCircle, ChevronDown, CalendarDays, Calendar, X } from 'lucide-react';
+import { LogOut, PlusCircle, FileText, UploadCloud, MapPin, CheckCircle2, Clock, Pencil, Send, CheckCheck, XCircle, AlertCircle, ChevronDown, CalendarDays, Calendar, X, Users } from 'lucide-react';
 
 
 // Hamlet codes per staff — mirrors Login.tsx
@@ -24,6 +24,60 @@ export default function StaffDashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncedSurveys, setSyncedSurveys] = useState<any[]>([]);
   const [loadingSynced, setLoadingSynced] = useState(false);
+  
+  const [isCcModalOpen, setIsCcModalOpen] = useState(false);
+  const [ccList, setCcList] = useState<any[]>([]);
+  const [loadingCc, setLoadingCc] = useState(false);
+
+  const fetchCCs = async () => {
+    setLoadingCc(true);
+    try {
+      const supabase = getSupabase() as any;
+      const { data } = await supabase.from('community_collectives').select('*').order('sno', { ascending: true });
+      if (data) setCcList(data);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoadingCc(false);
+  };
+
+  const handleSaveCc = async (cc: any, index: number) => {
+    if (!cc.name.trim()) {
+      alert('Please enter a name for the CC Meeting.');
+      return;
+    }
+    
+    try {
+      const supabase = getSupabase() as any;
+      
+      if (cc.id) {
+        const { error } = await supabase.from('community_collectives').update({
+          name: cc.name,
+          meetings_conducted: cc.meetings_conducted,
+          participants_count: cc.participants_count
+        }).eq('id', cc.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('community_collectives').insert([{
+          name: cc.name,
+          meetings_conducted: cc.meetings_conducted || 0,
+          participants_count: cc.participants_count || 0,
+          sno: String(ccList.length)
+        }]);
+        if (error) throw error;
+      }
+      
+      alert(`Saved successfully for ${cc.name}`);
+      fetchCCs();
+    } catch(e) {
+      console.error(e);
+      alert('Error saving CC Meeting');
+    }
+  };
+
+  const handleAddNewCc = () => {
+    setCcList([...ccList, { name: '', meetings_conducted: 0, participants_count: 0 }]);
+  };
 
   // Leave request state
   const { leaveRequests, submitLeaveRequest, setLeaveRequests } = useLeaveRequestStore();
@@ -502,6 +556,32 @@ export default function StaffDashboard() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button
+              onClick={() => {
+                setIsCcModalOpen(true);
+                fetchCCs();
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '13px 20px',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 18px rgba(245,158,11,0.4)',
+                transition: 'all 220ms ease',
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(245,158,11,0.55)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 18px rgba(245,158,11,0.4)'; }}
+            >
+              <Users size={18} />
+              Update CC
+            </button>
             <button
               id="staff-request-leave"
               onClick={handleOpenLeaveModal}
@@ -1049,6 +1129,119 @@ export default function StaffDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* CC Meetings Modal */}
+      {isCcModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: 'white', borderRadius: '20px', padding: '28px', maxWidth: '700px', width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 50px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Users size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Update CC Meetings</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#64748b' }}>Edit meetings conducted and participants count</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCcModalOpen(false)}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
+              {loadingCc ? (
+                <p style={{ textAlign: 'center', color: '#64748b', margin: '20px 0' }}>Loading CC meetings...</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {ccList.map((cc, i) => (
+                    <div key={cc.id || `new-${i}`} style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>CC Name</label>
+                        <input 
+                          type="text" 
+                          placeholder="Meeting Name"
+                          value={cc.name} 
+                          onChange={e => {
+                            const newList = [...ccList];
+                            newList[i].name = e.target.value;
+                            setCcList(newList);
+                          }} 
+                          style={{ width: '100%', padding: '8px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 600, color: '#1e293b' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Meetings</label>
+                        <input 
+                          type="number" 
+                          value={cc.meetings_conducted} 
+                          onChange={e => {
+                            const newList = [...ccList];
+                            newList[i].meetings_conducted = Number(e.target.value);
+                            setCcList(newList);
+                          }} 
+                          style={{ width: '80px', padding: '8px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Participants</label>
+                        <input 
+                          type="number" 
+                          value={cc.participants_count} 
+                          onChange={e => {
+                            const newList = [...ccList];
+                            newList[i].participants_count = Number(e.target.value);
+                            setCcList(newList);
+                          }} 
+                          style={{ width: '80px', padding: '8px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem' }}
+                        />
+                      </div>
+                      <button 
+                        onClick={() => handleSaveCc(cc, i)} 
+                        style={{ alignSelf: 'flex-end', padding: '8px 16px', background: 'linear-gradient(135deg,#2A9D8F,#1e8779)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(42,157,143,0.3)' }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={handleAddNewCc}
+                    style={{
+                      background: 'rgba(42,157,143,0.1)',
+                      color: '#2A9D8F',
+                      border: '1px dashed #2A9D8F',
+                      borderRadius: '10px',
+                      padding: '12px',
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      marginTop: '10px'
+                    }}
+                  >
+                    <PlusCircle size={18} />
+                    Add New CC Meeting
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setIsCcModalOpen(false)}
+                style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

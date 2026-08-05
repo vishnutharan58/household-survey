@@ -327,10 +327,17 @@ const EVENT_DETAILS = [
 ];
 
 const INITIAL_COLLECTIVES = [
-  { id: 'cc-1', sno: '1', name: 'CC Muthamizh', meetings_conducted: 4, participants_count: 48 },
-  { id: 'cc-2', sno: '2', name: 'CC Leepuram', meetings_conducted: 3, participants_count: 36 },
-  { id: 'cc-3', sno: '3', name: 'CC Muttom', meetings_conducted: 3, participants_count: 42 },
-  { id: 'cc-4', sno: '4', name: 'CC Simon Colony', meetings_conducted: 3, participants_count: 30 }
+  { id: 'cc-1', sno: '1', name: 'Arockiyapuram - 1', meetings_conducted: 4, participants_count: 117 },
+  { id: 'cc-2', sno: '2', name: 'Manakudy 1', meetings_conducted: 3, participants_count: 38 },
+  { id: 'cc-3', sno: '3', name: 'Manakudy 2', meetings_conducted: 2, participants_count: 16 },
+  { id: 'cc-4', sno: '4', name: 'Puthenthurai - 1', meetings_conducted: 3, participants_count: 36 },
+  { id: 'cc-5', sno: '5', name: 'Puthenthurai - 2', meetings_conducted: 1, participants_count: 21 },
+  { id: 'cc-6', sno: '6', name: 'Kesavanputhenthurai', meetings_conducted: 3, participants_count: 70 },
+  { id: 'cc-7', sno: '7', name: 'Rajakamangalamthurai 1', meetings_conducted: 4, participants_count: 74 },
+  { id: 'cc-8', sno: '8', name: 'Rajakamangalamthurai 2', meetings_conducted: 1, participants_count: 20 },
+  { id: 'cc-9', sno: '9', name: 'Simon colony', meetings_conducted: 1, participants_count: 20 },
+  { id: 'cc-10', sno: '10', name: 'Kodimunai 1', meetings_conducted: 3, participants_count: 60 },
+  { id: 'cc-11', sno: '11', name: 'Kodimunai 2', meetings_conducted: 3, participants_count: 47 }
 ];
 
 const INITIAL_DOCUMENTS_LIST = [
@@ -1147,7 +1154,27 @@ interface EditSeaMemberModalProps {
 
 function EditSeaMemberModal({ member, onClose, onSave }: EditSeaMemberModalProps) {
   const [name, setName] = useState(member?.name || '');
-  const [details, setDetails] = useState(member?.details || '');
+  
+  // Parse initial details into key-value pairs
+  const [detailsList, setDetailsList] = useState<{key: string, value: string}[]>(() => {
+    const initialDetails = member?.details || '';
+    if (!initialDetails.trim()) {
+      return [
+        { key: 'Age', value: '' },
+        { key: 'Gender', value: '' },
+        { key: 'Contact Number', value: '' },
+        { key: 'Village', value: '' }
+      ];
+    }
+    const parts = initialDetails.split('\n').filter(Boolean);
+    return parts.map((p: string) => {
+      const idx = p.indexOf(':');
+      if (idx > -1) {
+        return { key: p.substring(0, idx).trim(), value: p.substring(idx + 1).trim() };
+      }
+      return { key: 'Detail', value: p.trim() };
+    });
+  });
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1155,6 +1182,11 @@ function EditSeaMemberModal({ member, onClose, onSave }: EditSeaMemberModalProps
       alert("Name is required.");
       return;
     }
+    
+    // Construct details string
+    const validDetails = detailsList.filter(d => d.key.trim() && d.value.trim());
+    const details = validDetails.map(d => `${d.key.trim()}: ${d.value.trim()}`).join('\n');
+
     onSave({
       ...member,
       name,
@@ -1174,9 +1206,61 @@ function EditSeaMemberModal({ member, onClose, onSave }: EditSeaMemberModalProps
             <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Full Name</label>
             <input type="text" placeholder="e.g. John Doe" value={name} onChange={e => setName(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.9rem' }} required />
           </div>
-          <div>
-            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Details</label>
-            <textarea placeholder="Age, Gender, Contact Number, Village..." value={details} onChange={e => setDetails(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.9rem', minHeight: '120px', resize: 'vertical' }} />
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: 0 }}>Details</label>
+              <button 
+                type="button" 
+                onClick={() => setDetailsList([...detailsList, { key: '', value: '' }])} 
+                style={{ background: '#f1f5f9', color: '#1B3A5C', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <Plus size={14} /> Add Detail
+              </button>
+            </div>
+            
+            {detailsList.map((detail, index) => (
+              <div key={index} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input 
+                  type="text" 
+                  placeholder="Field (e.g. Age)" 
+                  value={detail.key} 
+                  onChange={e => {
+                    const newList = [...detailsList];
+                    newList[index].key = e.target.value;
+                    setDetailsList(newList);
+                  }} 
+                  style={{ width: '40%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.85rem' }} 
+                />
+                <input 
+                  type="text" 
+                  placeholder="Value" 
+                  value={detail.value} 
+                  onChange={e => {
+                    const newList = [...detailsList];
+                    newList[index].value = e.target.value;
+                    setDetailsList(newList);
+                  }} 
+                  style={{ width: '60%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.85rem' }} 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    const newList = detailsList.filter((_, i) => i !== index);
+                    setDetailsList(newList);
+                  }} 
+                  style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Remove detail"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+            {detailsList.length === 0 && (
+              <div style={{ padding: '12px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                No details added yet. Click "Add Detail" to add some.
+              </div>
+            )}
           </div>
         </div>
         <div style={{ background: '#f8fafc', padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
