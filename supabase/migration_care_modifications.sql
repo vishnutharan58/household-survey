@@ -240,6 +240,18 @@ CREATE POLICY "Admin full access events"
     (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );
 
+DROP POLICY IF EXISTS "Allow staff to update events" ON public.events;
+CREATE POLICY "Allow staff to update events" 
+  ON public.events FOR UPDATE USING (true);
+  
+DROP POLICY IF EXISTS "Allow staff to insert events" ON public.events;
+CREATE POLICY "Allow staff to insert events" 
+  ON public.events FOR INSERT WITH CHECK (true);
+  
+DROP POLICY IF EXISTS "Allow staff to delete events" ON public.events;
+CREATE POLICY "Allow staff to delete events" 
+  ON public.events FOR DELETE USING (true);
+
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS event_date DATE;
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS place TEXT;
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS start_time TEXT;
