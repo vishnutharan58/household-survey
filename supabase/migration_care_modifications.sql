@@ -258,6 +258,26 @@ ALTER TABLE public.events ADD COLUMN IF NOT EXISTS start_time TEXT;
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS end_time TEXT;
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS resource_person TEXT;
 
+-- Seed initial events
+INSERT INTO public.events (sno, activity, planned_programs, achieved_programs, planned_participants, achieved_participants)
+VALUES
+  ('1.1', 'Baseline Study and Line Listing', 1, 1, 6000, 6528),
+  ('1.2', 'Formation of Community Collectives', 30, 8, 0, 0),
+  ('1.3', 'Monthly Meeting of Community Collectives', 900, 13, 0, 0),
+  ('2.1', 'Training to Social Entitlement Animators', 12, 0, 360, 0),
+  ('2.2', 'Experience Sharing & Peer Learning Meeting', 3, 0, 0, 0),
+  ('3.1', 'Convergence with Existing Structures & Stakeholders', 18, 0, 0, 0),
+  ('3.2', 'Interface Meetings with Administrative Heads & Elected Representatives', 6, 0, 0, 0),
+  ('4.1', 'Hand Bills and Wall Painting', 3, 0, 0, 0),
+  ('4.2', 'Mass Community Awareness Event (Rally & People’s Assembly)', 2, 0, 0, 0),
+  ('4.3', 'Inclusive Social Entitlement Camps', 84, 0, 0, 0),
+  ('4.4', 'Disaster Response / Relief to Most Marginalised', 300, 0, 0, 0),
+  ('5.1', 'Staff Capacity Building Training', 8, 2, 0, 0),
+  ('5.2', 'Inter-State Staff Exposure Visit – Karnataka', 1, 0, 0, 0),
+  ('5.3', 'Staff Review & Planning Meeting', 36, 25, 0, 0)
+ON CONFLICT DO NOTHING;
+
+
 -- 7. Update get_dashboard_stats function to return updated statistics
 CREATE OR REPLACE FUNCTION public.get_dashboard_stats()
 RETURNS JSONB
