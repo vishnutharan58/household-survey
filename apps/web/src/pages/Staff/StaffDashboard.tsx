@@ -41,7 +41,7 @@ export default function StaffDashboard() {
     setLoadingCc(false);
   };
 
-  const handleSaveCc = async (cc: any, index: number) => {
+  const handleSaveCc = async (cc: any, _index: number) => {
     if (!cc.name.trim()) {
       alert('Please enter a name for the CC Meeting.');
       return;
@@ -124,8 +124,8 @@ export default function StaffDashboard() {
   }, [user?.email]);
 
   const handleOpenLeaveModal = () => {
-    setLeaveType('Casual Leave');
     const todayStr = new Date().toISOString().split('T')[0];
+    setLeaveType('Casual Leave');
     setStartDate(todayStr);
     setEndDate(todayStr);
     setLeaveReason('');
@@ -188,8 +188,7 @@ export default function StaffDashboard() {
       setAttendanceStatus('loading');
       try {
         const supabase = getSupabase() as any;
-        const todayStr = new Date().toISOString().split('T')[0];
-        
+                
         const { data, error } = await supabase
           .from('staff_attendance')
           .select('*')
@@ -214,8 +213,7 @@ export default function StaffDashboard() {
         }
       } catch (err) {
         console.warn("Failed to fetch attendance from database, using localStorage fallback:", err);
-        const todayStr = new Date().toISOString().split('T')[0];
-        const localLogs = localStorage.getItem('care_attendance_logs');
+                const localLogs = localStorage.getItem('care_attendance_logs');
         const logs = localLogs ? JSON.parse(localLogs) : [];
         const todayLog = logs.findLast((l: any) => l.email === user.email);
         
