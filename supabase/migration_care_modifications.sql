@@ -122,6 +122,10 @@ DROP POLICY IF EXISTS "Allow staff to insert community_collectives" ON public.co
 CREATE POLICY "Allow staff to insert community_collectives" 
   ON public.community_collectives FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow staff to delete community_collectives" ON public.community_collectives;
+CREATE POLICY "Allow staff to delete community_collectives" 
+  ON public.community_collectives FOR DELETE USING (true);
+
 -- Seed initial collectives
 INSERT INTO public.community_collectives (sno, name, meetings_conducted, participants_count)
 VALUES

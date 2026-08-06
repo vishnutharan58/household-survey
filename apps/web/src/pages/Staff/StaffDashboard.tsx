@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore, useDraftStore, useEditRequestStore, useLeaveRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail, fetchLeaveRequestsFromSupabase, createLeaveRequestInSupabase } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, PlusCircle, FileText, UploadCloud, MapPin, CheckCircle2, Clock, Pencil, Send, CheckCheck, XCircle, AlertCircle, ChevronDown, CalendarDays, Calendar, X, Users } from 'lucide-react';
+import { LogOut, PlusCircle, FileText, UploadCloud, MapPin, CheckCircle2, Clock, Pencil, Send, CheckCheck, XCircle, AlertCircle, ChevronDown, CalendarDays, Calendar, X, Users, Trash2 } from 'lucide-react';
 
 
 // Hamlet codes per staff — mirrors Login.tsx
@@ -77,6 +77,30 @@ export default function StaffDashboard() {
 
   const handleAddNewCc = () => {
     setCcList([...ccList, { name: '', meetings_conducted: 0, participants_count: 0 }]);
+  };
+
+  const handleDeleteCc = async (cc: any, index: number) => {
+    if (!cc.id) {
+      // It's a newly added row not yet saved to DB
+      const newList = [...ccList];
+      newList.splice(index, 1);
+      setCcList(newList);
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${cc.name}?`)) return;
+
+    try {
+      const supabase = getSupabase() as any;
+      const { error } = await supabase.from('community_collectives').delete().eq('id', cc.id);
+      if (error) throw error;
+      
+      alert(`Deleted successfully.`);
+      fetchCCs();
+    } catch(e) {
+      console.error(e);
+      alert('Error deleting CC Meeting');
+    }
   };
 
   // Leave request state
@@ -1201,12 +1225,20 @@ export default function StaffDashboard() {
                           style={{ width: '80px', padding: '8px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem' }}
                         />
                       </div>
-                      <button 
-                        onClick={() => handleSaveCc(cc, i)} 
-                        style={{ alignSelf: 'flex-end', padding: '8px 16px', background: 'linear-gradient(135deg,#2A9D8F,#1e8779)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(42,157,143,0.3)' }}
-                      >
-                        Save
-                      </button>
+                      <div style={{ display: 'flex', gap: '6px', alignSelf: 'flex-end' }}>
+                        <button 
+                          onClick={() => handleSaveCc(cc, i)} 
+                          style={{ padding: '8px 16px', background: 'linear-gradient(135deg,#2A9D8F,#1e8779)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(42,157,143,0.3)' }}
+                        >
+                          Save
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteCc(cc, i)} 
+                          style={{ padding: '8px 12px', background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '6px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                   <button
