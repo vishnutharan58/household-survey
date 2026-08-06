@@ -1404,7 +1404,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   }, []);
 
   const handleSaveEvent = async (eventData: any) => {
-    const isNew = !eventData.id || eventData.id.startsWith('temp-');
+    const isNew = !eventData.id || eventData.id.startsWith('temp-') || eventData.id.startsWith('event-');
     const finalId = eventData.id || 'event-' + Date.now();
     const preparedData = { ...eventData, id: finalId };
     
@@ -1436,6 +1436,13 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const handleDeleteEvent = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this event?")) return;
+
+    if (id.startsWith('event-') || id.startsWith('temp-')) {
+      const updated = eventsList.filter(event => event.id !== id);
+      setEventsList(updated);
+      return;
+    }
+
     if (isUsingDb) {
       try {
         const supabase = getSupabase() as any;
