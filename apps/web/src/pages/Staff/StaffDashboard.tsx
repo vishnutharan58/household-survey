@@ -703,7 +703,7 @@ export default function StaffDashboard() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
-            {attendanceStatus === 'not_checked_in' && (
+            {(attendanceStatus === 'not_checked_in' || attendanceStatus === 'checked_out') && (
               <button
                 onClick={handleCheckIn}
                 style={{
@@ -721,7 +721,7 @@ export default function StaffDashboard() {
                 onMouseOver={e => (e.currentTarget.style.transform = 'translateY(-1px)')}
                 onMouseOut={e => (e.currentTarget.style.transform = 'none')}
               >
-                Check In
+                {attendanceStatus === 'checked_out' ? 'Check In Again' : 'Check In'}
               </button>
             )}
             {attendanceStatus === 'checked_in' && (
