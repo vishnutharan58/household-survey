@@ -53,6 +53,7 @@ export default function StaffDashboard() {
       if (cc.id) {
         const { error } = await supabase.from('community_collectives').update({
           name: cc.name,
+          membership_count: cc.membership_count,
           meetings_conducted: cc.meetings_conducted,
           participants_count: cc.participants_count
         }).eq('id', cc.id);
@@ -60,6 +61,7 @@ export default function StaffDashboard() {
       } else {
         const { error } = await supabase.from('community_collectives').insert([{
           name: cc.name,
+          membership_count: cc.membership_count || 0,
           meetings_conducted: cc.meetings_conducted || 0,
           participants_count: cc.participants_count || 0,
           sno: String(ccList.length)
@@ -76,7 +78,7 @@ export default function StaffDashboard() {
   };
 
   const handleAddNewCc = () => {
-    setCcList([...ccList, { name: '', meetings_conducted: 0, participants_count: 0 }]);
+    setCcList([...ccList, { name: '', membership_count: 0, meetings_conducted: 0, participants_count: 0 }]);
   };
 
   const handleDeleteCc = async (cc: any, index: number) => {

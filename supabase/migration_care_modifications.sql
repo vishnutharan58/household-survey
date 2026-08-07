@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS public.community_collectives (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   sno TEXT,
   name TEXT NOT NULL,
+  membership_count INTEGER DEFAULT 0,
   meetings_conducted INTEGER DEFAULT 0,
   participants_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -127,160 +128,20 @@ CREATE POLICY "Allow staff to delete community_collectives"
   ON public.community_collectives FOR DELETE USING (true);
 
 -- Seed initial collectives
-INSERT INTO public.community_collectives (sno, name, meetings_conducted, participants_count)
+INSERT INTO public.community_collectives (sno, name, membership_count, meetings_conducted, participants_count)
 VALUES
-  ('1', 'Arockiyapuram - 1', 4, 117),
-  ('2', 'Manakudy 1', 3, 38),
-  ('3', 'Manakudy 2', 2, 16),
-  ('4', 'Puthenthurai - 1', 3, 36),
-  ('5', 'Puthenthurai - 2', 1, 21),
-  ('6', 'Kesavanputhenthurai', 3, 70),
-  ('7', 'Rajakamangalamthurai 1', 4, 74),
-  ('8', 'Rajakamangalamthurai 2', 1, 20),
-  ('9', 'Simon colony', 1, 20),
-  ('10', 'Kodimunai 1', 3, 60),
-  ('11', 'Kodimunai 2', 3, 47)
+  ('1', 'Arockiyapuram - 1', 40, 4, 117),
+  ('2', 'Manakudy 1', 19, 3, 38),
+  ('3', 'Manakudy 2', 12, 2, 16),
+  ('4', 'Puthenthurai - 1', 22, 3, 36),
+  ('5', 'Puthenthurai - 2', 15, 1, 21),
+  ('6', 'Kesavanputhenthurai', 27, 3, 70),
+  ('7', 'Rajakamangalamthurai 1', 40, 4, 74),
+  ('8', 'Rajakamangalamthurai 2', 30, 1, 20),
+  ('9', 'Simon colony', 20, 1, 20),
+  ('10', 'Kodimunai 1', 27, 3, 60),
+  ('11', 'Kodimunai 2', 24, 3, 47)
 ON CONFLICT DO NOTHING;
-
--- 4. Create documents_list table
-CREATE TABLE IF NOT EXISTS public.documents_list (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  sno TEXT,
-  name TEXT NOT NULL,
-  description TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Enable RLS on documents_list
-ALTER TABLE public.documents_list ENABLE ROW LEVEL SECURITY;
-
--- Create policies for documents_list
-DROP POLICY IF EXISTS "Allow public read access to documents_list" ON public.documents_list;
-CREATE POLICY "Allow public read access to documents_list" 
-  ON public.documents_list FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Admin full access documents_list" ON public.documents_list;
-CREATE POLICY "Admin full access documents_list" 
-  ON public.documents_list FOR ALL USING (
-    auth.jwt() ->> 'role' = 'admin' OR 
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
-  );
-
--- Seed initial documents list
-INSERT INTO public.documents_list (sno, name, description)
-VALUES
-  ('1', 'Aadhaar Card', 'Identity card with demographic and biometric data'),
-  ('2', 'Ration Card', 'Government-issued document for purchasing subsidized food grains'),
-  ('3', 'E-Epic', 'Digital voter identity card'),
-  ('4', 'PAN Card', 'Permanent Account Number card for financial transactions'),
-  ('5', 'Bank Account', 'Savings bank account details and passbook'),
-  ('6', 'Birth Certificate', 'Official document registering birth details'),
-  ('7', 'Community Certificate', 'Certificate stating community and caste category')
-ON CONFLICT DO NOTHING;
-
--- 5. Create schemes_list table
-CREATE TABLE IF NOT EXISTS public.schemes_list (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  sno TEXT,
-  name TEXT NOT NULL,
-  description TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Enable RLS on schemes_list
-ALTER TABLE public.schemes_list ENABLE ROW LEVEL SECURITY;
-
--- Create policies for schemes_list
-DROP POLICY IF EXISTS "Allow public read access to schemes_list" ON public.schemes_list;
-CREATE POLICY "Allow public read access to schemes_list" 
-  ON public.schemes_list FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Admin full access schemes_list" ON public.schemes_list;
-CREATE POLICY "Admin full access schemes_list" 
-  ON public.schemes_list FOR ALL USING (
-    auth.jwt() ->> 'role' = 'admin' OR 
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
-  );
-
--- Seed initial schemes list
-INSERT INTO public.schemes_list (sno, name, description)
-VALUES
-  ('1', 'Old Age Pension', 'Monthly pension for senior citizens above 60'),
-  ('2', 'Widow Pension', 'Financial support for widowed women'),
-  ('3', 'Disability Pension', 'Financial support for differently-abled individuals'),
-  ('4', 'Puthumai Penn Scheme', 'Financial assistance for girls pursuing higher education'),
-  ('5', 'Tamil Puthalvan Scheme', 'Financial assistance for boys pursuing higher education'),
-  ('6', 'CMCHIS', 'Chief Minister''s Comprehensive Health Insurance Scheme')
-ON CONFLICT DO NOTHING;
-
--- 6. Create events table if not exists, then add date, place, timing and resource person fields
-CREATE TABLE IF NOT EXISTS public.events (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  sno TEXT,
-  activity TEXT NOT NULL,
-  planned_programs INTEGER DEFAULT 0,
-  achieved_programs INTEGER DEFAULT 0,
-  planned_participants INTEGER DEFAULT 0,
-  achieved_participants INTEGER DEFAULT 0,
-  images TEXT[] DEFAULT '{}',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Enable RLS on events table
-ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
-
--- Policies for events
-DROP POLICY IF EXISTS "Allow public read access to events" ON public.events;
-CREATE POLICY "Allow public read access to events" ON public.events
-  FOR SELECT USING (true);
-  
-DROP POLICY IF EXISTS "Admin full access events" ON public.events;
-CREATE POLICY "Admin full access events" 
-  ON public.events FOR ALL USING (
-    auth.jwt() ->> 'role' = 'admin' OR 
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
-  );
-
-DROP POLICY IF EXISTS "Allow staff to update events" ON public.events;
-CREATE POLICY "Allow staff to update events" 
-  ON public.events FOR UPDATE USING (true);
-  
-DROP POLICY IF EXISTS "Allow staff to insert events" ON public.events;
-CREATE POLICY "Allow staff to insert events" 
-  ON public.events FOR INSERT WITH CHECK (true);
-  
-DROP POLICY IF EXISTS "Allow staff to delete events" ON public.events;
-CREATE POLICY "Allow staff to delete events" 
-  ON public.events FOR DELETE USING (true);
-
-ALTER TABLE public.events ADD COLUMN IF NOT EXISTS event_date DATE;
-ALTER TABLE public.events ADD COLUMN IF NOT EXISTS place TEXT;
-ALTER TABLE public.events ADD COLUMN IF NOT EXISTS start_time TEXT;
-ALTER TABLE public.events ADD COLUMN IF NOT EXISTS end_time TEXT;
-ALTER TABLE public.events ADD COLUMN IF NOT EXISTS resource_person TEXT;
-
--- Seed initial events
-INSERT INTO public.events (sno, activity, planned_programs, achieved_programs, planned_participants, achieved_participants)
-VALUES
-  ('1.1', 'Baseline Study and Line Listing', 1, 1, 6000, 6528),
-  ('1.2', 'Formation of Community Collectives', 30, 8, 0, 0),
-  ('1.3', 'Monthly Meeting of Community Collectives', 900, 13, 0, 0),
-  ('2.1', 'Training to Social Entitlement Animators', 12, 0, 360, 0),
-  ('2.2', 'Experience Sharing & Peer Learning Meeting', 3, 0, 0, 0),
-  ('3.1', 'Convergence with Existing Structures & Stakeholders', 18, 0, 0, 0),
-  ('3.2', 'Interface Meetings with Administrative Heads & Elected Representatives', 6, 0, 0, 0),
-  ('4.1', 'Hand Bills and Wall Painting', 3, 0, 0, 0),
-  ('4.2', 'Mass Community Awareness Event (Rally & People’s Assembly)', 2, 0, 0, 0),
-  ('4.3', 'Inclusive Social Entitlement Camps', 84, 0, 0, 0),
-  ('4.4', 'Disaster Response / Relief to Most Marginalised', 300, 0, 0, 0),
-  ('5.1', 'Staff Capacity Building Training', 8, 2, 0, 0),
-  ('5.2', 'Inter-State Staff Exposure Visit – Karnataka', 1, 0, 0, 0),
-  ('5.3', 'Staff Review & Planning Meeting', 36, 25, 0, 0)
-ON CONFLICT DO NOTHING;
-
 
 -- 7. Update get_dashboard_stats function to return updated statistics
 CREATE OR REPLACE FUNCTION public.get_dashboard_stats()

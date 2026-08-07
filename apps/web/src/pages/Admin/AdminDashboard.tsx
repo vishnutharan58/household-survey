@@ -863,6 +863,7 @@ interface EditCollectiveModalProps {
 function EditCollectiveModal({ collective, onClose, onSave }: EditCollectiveModalProps) {
   const [sno, setSno] = useState(collective?.sno || '');
   const [name, setName] = useState(collective?.name || '');
+  const [membershipCount, setMembershipCount] = useState(collective?.membership_count?.toString() || '0');
   const [meetingsConducted, setMeetingsConducted] = useState(collective?.meetings_conducted?.toString() || '0');
   const [participantsCount, setParticipantsCount] = useState(collective?.participants_count?.toString() || '0');
 
@@ -876,6 +877,7 @@ function EditCollectiveModal({ collective, onClose, onSave }: EditCollectiveModa
       ...collective,
       sno,
       name,
+      membership_count: parseInt(membershipCount, 10) || 0,
       meetings_conducted: parseInt(meetingsConducted, 10) || 0,
       participants_count: parseInt(participantsCount, 10) || 0
     });
@@ -899,7 +901,11 @@ function EditCollectiveModal({ collective, onClose, onSave }: EditCollectiveModa
               <input type="text" placeholder="e.g. CC Muthamizh" value={name} onChange={e => setName(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} required />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Membership Count</label>
+              <input type="number" value={membershipCount} onChange={e => setMembershipCount(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} />
+            </div>
             <div>
               <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Meetings Conducted</label>
               <input type="number" value={meetingsConducted} onChange={e => setMeetingsConducted(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} />
