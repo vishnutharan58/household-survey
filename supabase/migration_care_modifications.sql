@@ -171,6 +171,7 @@ DECLARE
   total_cc INT;
   total_meetings INT;
   total_cc_participants INT;
+  total_cc_membership INT;
   active_attendance_today INT;
 BEGIN
   -- Overridden counts as per requirements: "update the Total Household Surveyed count to 6,528 and individuals to 21,777."
@@ -348,6 +349,7 @@ BEGIN
   SELECT count(*) INTO total_cc FROM public.community_collectives;
   SELECT COALESCE(sum(meetings_conducted), 0) INTO total_meetings FROM public.community_collectives;
   SELECT COALESCE(sum(participants_count), 0) INTO total_cc_participants FROM public.community_collectives;
+  SELECT COALESCE(sum(membership_count), 0) INTO total_cc_membership FROM public.community_collectives;
 
   -- Today's attendance
   SELECT count(DISTINCT email) INTO active_attendance_today 
@@ -376,6 +378,7 @@ BEGIN
     'total_cc', total_cc,
     'total_meetings', total_meetings,
     'total_cc_participants', total_cc_participants,
+    'total_cc_membership', total_cc_membership,
     'active_attendance_today', active_attendance_today
   );
 

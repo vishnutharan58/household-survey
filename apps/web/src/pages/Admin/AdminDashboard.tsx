@@ -3576,6 +3576,15 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
                 <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1B3A5C', margin: '2px 0 0' }}>{stats.total_cc_participants || totalParticipants}</p>
               </div>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                <Users size={20} />
+              </div>
+              <div>
+                <p style={{ fontSize: '0.74rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Total Membership</p>
+                <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1B3A5C', margin: '2px 0 0' }}>{stats.total_cc_membership || 0}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
