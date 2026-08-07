@@ -2113,7 +2113,11 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                             <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>ID: {c.id}</span>
                           </div>
                           <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1B3A5C', margin: '0 0 10px' }}>{c.name}</h4>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', background: '#f8fafc', padding: '10px', borderRadius: '8px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', background: '#f8fafc', padding: '10px', borderRadius: '8px' }}>
+                            <div>
+                              <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Membership</span>
+                              <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e293b' }}>{c.membership_count || 0}</span>
+                            </div>
                             <div>
                               <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Meetings</span>
                               <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e293b' }}>{c.meetings_conducted}</span>
