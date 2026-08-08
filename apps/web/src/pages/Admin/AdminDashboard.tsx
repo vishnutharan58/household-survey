@@ -984,7 +984,7 @@ interface EventDetailModalProps {
   onClose: () => void;
 }
 
-function EventDetailModal({ event, onClose }: EventDetailModalProps) {
+function EventDetailModal({ event, reports, onClose }: EventDetailModalProps) {
   const [reportType, setReportType] = useState<'daily' | 'monthly' | 'quarterly' | 'duration'>('daily');
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportMonth, setReportMonth] = useState('2026-07');
@@ -1299,6 +1299,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
   const [isEditEventOpen, setIsEditEventOpen] = useState(false);
   const [detailedEvent, setDetailedEvent] = useState<any | null>(null);
+  const [eventReportsList, setEventReportsList] = useState<any[]>([]);
   
   const [editingStaff, setEditingStaff] = useState<any | null>(null);
   const [isEditStaffOpen, setIsEditStaffOpen] = useState(false);
@@ -1333,6 +1334,11 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
       const { data: dbAttendance } = await supabase.from('staff_attendance').select('*').order('login_time', { ascending: false });
       const { data: dbServices } = await supabase.from('other_services_list').select('*').order('sno', { ascending: true });
       const { data: dbSeaMembers } = await supabase.from('sea_members_list').select('*');
+
+        const { data: dbEventReports, error: evRepErr } = await supabase.from('event_reports').select('*');
+        if (evRepErr) console.warn("Failed to fetch event reports:", evRepErr);
+        else setEventReportsList(dbEventReports || []);
+
       
       setEventsList(dbEvents && dbEvents.length > 0 ? dbEvents.map(mapDbEventToUi) : EVENT_DETAILS);
       
