@@ -673,7 +673,7 @@ export default function StaffDashboard() {
             </div>
           </div>
 
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '10px' }}>
               <button
                 onClick={() => {
                   setIsEventModalOpen(true);
@@ -684,26 +684,22 @@ export default function StaffDashboard() {
                   color: 'white',
                   border: 'none',
                   borderRadius: '12px',
-                  padding: '12px 20px',
-                  fontWeight: 600,
+                  padding: '13px 20px',
+                  fontWeight: 700,
                   fontSize: '0.9rem',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                   cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
-                  transition: 'all 0.2s ease',
-                  flex: 1,
-                  justifyContent: 'center'
+                  boxShadow: '0 4px 18px rgba(16,185,129,0.4)',
+                  transition: 'all 220ms ease',
                 }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(16,185,129,0.55)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 18px rgba(16,185,129,0.4)'; }}
               >
                 <Award size={18} />
                 <span>Add Event Details</span>
               </button>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '10px' }}>
               <button
                 onClick={() => {
                   setIsCcModalOpen(true);
