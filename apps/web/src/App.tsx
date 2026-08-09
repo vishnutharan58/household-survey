@@ -1,6 +1,6 @@
-// Removed unused React import
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore, initSupabase } from '@pro-vision-care/shared';
+import { useAuthStore, initSupabase, getSupabase } from '@pro-vision-care/shared';
 import Login from './pages/Login';
 import StaffDashboard from './pages/Staff/StaffDashboard';
 import SurveyForm from './pages/Staff/SurveyForm';
@@ -16,6 +16,29 @@ initSupabase(
 function App() {
   const session = useAuthStore((state) => state.session);
   const role = useAuthStore((state) => state.role);
+  const setAuth = useAuthStore((state) => state.setAuth);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  useEffect(() => {
+    const supabase = getSupabase() as any;
+    
+    supabase.auth.getSession().then(({ data: { session } }: any) => {
+      setAuth(session);
+      setIsInitializing(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+      setAuth(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [setAuth]);
+
+  if (isInitializing) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f8fafc', color: '#1B3A5C', fontWeight: 600, fontSize: '1.2rem' }}>Loading...</div>;
+  }
 
   return (
     <BrowserRouter>
