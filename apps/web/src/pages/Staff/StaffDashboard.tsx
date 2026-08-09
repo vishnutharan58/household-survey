@@ -114,9 +114,9 @@ export default function StaffDashboard() {
         staff_email: user?.email || '',
         achieved_participants: newParticipants,
         event_date: eventFormData.event_date || null,
-        start_time: eventFormData.start_time,
-        end_time: eventFormData.end_time,
-        place: eventFormData.place,
+        start_time: eventFormData.start_time || null,
+        end_time: eventFormData.end_time || null,
+        place: eventFormData.place || null,
         resource_person: eventFormData.resource_person,
         images: eventFormData.images
       }]);
@@ -558,6 +558,8 @@ export default function StaffDashboard() {
       hamletCode: draft.household.hamlet_code,
     });
   };
+  const selectedEventObj = eventsList.find(e => e.id === selectedEventId);
+  const isCCMeeting = !!(selectedEventObj?.activity?.toLowerCase().includes('cc meeting') || selectedEventObj?.activity?.toLowerCase().includes("children's club") || selectedEventObj?.activity?.toLowerCase().includes("childrens club"));
 
   return (
     <div style={{ minHeight: '100vh', background: '#f0f4f8' }}>
@@ -1343,64 +1345,69 @@ export default function StaffDashboard() {
                   </select>
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Number of Participants</label>
                     <input type="number" required value={eventFormData.achieved_participants} onChange={e => setEventFormData({...eventFormData, achieved_participants: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Event Date</label>
-                    <input type="date" required value={eventFormData.event_date} onChange={e => setEventFormData({...eventFormData, event_date: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
-                  </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Start Time</label>
-                    <input type="time" required value={eventFormData.start_time} onChange={e => setEventFormData({...eventFormData, start_time: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>End Time</label>
-                    <input type="time" required value={eventFormData.end_time} onChange={e => setEventFormData({...eventFormData, end_time: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Place</label>
-                  <input type="text" required value={eventFormData.place} onChange={e => setEventFormData({...eventFormData, place: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} placeholder="E.g. Community Hall" />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Resource Person</label>
-                  <input type="text" required value={eventFormData.resource_person} onChange={e => setEventFormData({...eventFormData, resource_person: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} placeholder="E.g. Dr. John Doe" />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Add Images</label>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>
-                      <Upload size={16} /> Upload Image
-                      <input type="file" multiple accept="image/*" onChange={handleEventImageUpload} style={{ display: 'none' }} />
-                    </label>
-                    {eventUploading && <span style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 600 }}>Uploading...</span>}
-                  </div>
-                  {eventFormData.images.length > 0 && (
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
-                      {eventFormData.images.map((url, i) => (
-                        <div key={i} style={{ position: 'relative' }}>
-                          <img src={url} alt="upload" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
-                          <button
-                            type="button"
-                            onClick={() => setEventFormData(prev => ({ ...prev, images: prev.images.filter((_, idx) => idx !== i) }))}
-                            style={{ position: 'absolute', top: '-6px', right: '-6px', background: 'white', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
+                {!isCCMeeting && (
+                  <>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Event Date</label>
+                      <input type="date" required value={eventFormData.event_date} onChange={e => setEventFormData({...eventFormData, event_date: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
                     </div>
-                  )}
-                </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Start Time</label>
+                        <input type="time" required value={eventFormData.start_time} onChange={e => setEventFormData({...eventFormData, start_time: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>End Time</label>
+                        <input type="time" required value={eventFormData.end_time} onChange={e => setEventFormData({...eventFormData, end_time: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Place</label>
+                      <input type="text" required value={eventFormData.place} onChange={e => setEventFormData({...eventFormData, place: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} placeholder="E.g. Community Hall" />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Resource Person</label>
+                      <input type="text" required value={eventFormData.resource_person} onChange={e => setEventFormData({...eventFormData, resource_person: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} placeholder="E.g. Dr. John Doe" />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Add Images</label>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>
+                          <Upload size={16} /> Upload Image
+                          <input type="file" multiple accept="image/*" onChange={handleEventImageUpload} style={{ display: 'none' }} />
+                        </label>
+                        {eventUploading && <span style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 600 }}>Uploading...</span>}
+                      </div>
+                      {eventFormData.images.length > 0 && (
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+                          {eventFormData.images.map((url, i) => (
+                            <div key={i} style={{ position: 'relative' }}>
+                              <img src={url} alt="upload" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                              <button
+                                type="button"
+                                onClick={() => setEventFormData(prev => ({ ...prev, images: prev.images.filter((_, idx) => idx !== i) }))}
+                                style={{ position: 'absolute', top: '-6px', right: '-6px', background: 'white', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
                   <button type="button" onClick={() => setIsEventModalOpen(false)} style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>Cancel</button>
