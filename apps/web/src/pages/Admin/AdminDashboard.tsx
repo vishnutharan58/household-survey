@@ -985,7 +985,27 @@ interface EventDetailModalProps {
 }
 
 function EventDetailModal({ event, onClose }: EventDetailModalProps) {
+  const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
   const [reportType, setReportType] = useState<'daily' | 'monthly' | 'quarterly' | 'duration'>('daily');
+
+  useEffect(() => {
+    if (activeTab === 'logs' && logs.length === 0) {
+      const fetchLogs = async () => {
+        setLoadingLogs(true);
+        try {
+          const supabase = getSupabase() as any;
+          const { data } = await supabase.from('event_reports').select('*').eq('event_id', event.id).order('created_at', { ascending: false });
+          if (data) setLogs(data);
+        } catch (err) {
+          console.error(err);
+        }
+        setLoadingLogs(false);
+      };
+      fetchLogs();
+    }
+  }, [activeTab, event.id, logs.length]);
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportMonth, setReportMonth] = useState('2026-07');
   const [reportQuarter, setReportQuarter] = useState('Q1-2026');
@@ -1037,9 +1057,17 @@ function EventDetailModal({ event, onClose }: EventDetailModalProps) {
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>📋 Detailed Event Page - {event.sno}</h3>
           <button type="button" onClick={onClose} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}><X size={16} /></button>
         </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <button type="button" onClick={() => setActiveTab('details')} style={{ flex: 1, padding: '14px', background: activeTab === 'details' ? 'white' : 'transparent', borderBottom: activeTab === 'details' ? '2.5px solid #2A9D8F' : '2.5px solid transparent', color: activeTab === 'details' ? '#1B3A5C' : '#64748b', fontWeight: 700, fontSize: '0.9rem', borderTop: 'none', borderLeft: 'none', borderRight: 'none', cursor: 'pointer', transition: 'all 200ms' }}>Details & Report</button>
+          <button type="button" onClick={() => setActiveTab('logs')} style={{ flex: 1, padding: '14px', background: activeTab === 'logs' ? 'white' : 'transparent', borderBottom: activeTab === 'logs' ? '2.5px solid #2A9D8F' : '2.5px solid transparent', color: activeTab === 'logs' ? '#1B3A5C' : '#64748b', fontWeight: 700, fontSize: '0.9rem', borderTop: 'none', borderLeft: 'none', borderRight: 'none', cursor: 'pointer', transition: 'all 200ms' }}>Staff Logs</button>
+        </div>
         
         <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto', maxHeight: '70vh' }}>
-          <div>
+          {activeTab === 'details' && (
+            <>
+              <div>
             <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B3A5C', margin: '0 0 4px' }}>{event.activity}</h4>
             <span style={{ fontSize: '0.75rem', background: '#e2e8f0', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>Activity {event.sno}</span>
           </div>
@@ -1141,6 +1169,65 @@ function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               <button type="button" onClick={handleDownloadReport} style={{ background: '#2A9D8F', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 4px rgba(42,157,143,0.2)', width: '100%', maxWidth: '180px', marginTop: '4px' }}>Generate Report</button>
             </div>
           </div>
+          </>
+          )}
+
+          {activeTab === 'logs' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {loadingLogs ? (
+                <p style={{ textAlign: 'center', color: '#64748b', fontSize: '0.9rem', padding: '20px 0' }}>Loading logs...</p>
+              ) : logs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px 0', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                  <p style={{ margin: 0, color: '#64748b', fontWeight: 600, fontSize: '0.9rem' }}>No staff logs found for this event.</p>
+                </div>
+              ) : (
+                logs.map((log: any) => (
+                  <div key={log.id} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
+                      <div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A9D8F', background: 'rgba(42,157,143,0.1)', padding: '3px 8px', borderRadius: '4px' }}>{log.staff_email}</span>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>{new Date(log.created_at).toLocaleString()}</span>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                      <div>
+                        <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Date</p>
+                        <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.event_date || '—'}</p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Place</p>
+                        <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.place || '—'}</p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Timings</p>
+                        <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.start_time || '—'} to {log.end_time || '—'}</p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Participants</p>
+                        <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.achieved_participants || 0}</p>
+                      </div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Resource Person</p>
+                        <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.resource_person || '—'}</p>
+                      </div>
+                    </div>
+                    
+                    {log.images && log.images.length > 0 && (
+                      <div>
+                        <p style={{ fontSize: '0.7rem', color: '#64748b', margin: '0 0 6px', fontWeight: 700, textTransform: 'uppercase' }}>Attachments</p>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {log.images.map((img: string, i: number) => (
+                            <img key={i} src={img} alt="Log attachment" style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => window.open(img, '_blank')} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
         
         <div style={{ background: '#f8fafc', padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
