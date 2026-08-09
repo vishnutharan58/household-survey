@@ -992,6 +992,64 @@ function EventDetailModal({ event, onClose, onLogChange }: EventDetailModalProps
   const [reportType, setReportType] = useState<'daily' | 'monthly' | 'quarterly' | 'duration'>('daily');
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [editLogForm, setEditLogForm] = useState<any>({});
+  
+  const combinedImages = [
+    ...(event.images || []).map((img: string) => ({ url: img, type: 'event' })),
+    ...logs.flatMap((log: any) => (log.images || []).map((img: string) => ({ url: img, type: 'log', logId: log.id })))
+  ];
+  
+  const [expandedImage, setExpandedImage] = useState<{url: string, type: string, logId?: string} | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  const handleAddGalleryImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploadingImage(true);
+    try {
+      const url = await uploadEventImage(file, event.id);
+      const supabase = getSupabase() as any;
+      const newImages = [...(event.images || []), url];
+      
+      const { error } = await supabase.from('events').update({ images: newImages }).eq('id', event.id);
+      if (error) throw error;
+      
+      if (onLogChange) onLogChange();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to upload image.');
+    }
+    setIsUploadingImage(false);
+  };
+  
+  const handleDeleteGalleryImage = async () => {
+    if (!expandedImage) return;
+    if (!confirm('Are you sure you want to delete this image?')) return;
+    
+    try {
+      const supabase = getSupabase() as any;
+      if (expandedImage.type === 'event') {
+        const newImages = (event.images || []).filter((img: string) => img !== expandedImage.url);
+        const { error } = await supabase.from('events').update({ images: newImages }).eq('id', event.id);
+        if (error) throw error;
+      } else if (expandedImage.type === 'log' && expandedImage.logId) {
+        const log = logs.find(l => l.id === expandedImage.logId);
+        if (log) {
+          const newImages = (log.images || []).filter((img: string) => img !== expandedImage.url);
+          const { error } = await supabase.from('event_reports').update({ images: newImages }).eq('id', expandedImage.logId);
+          if (error) throw error;
+          
+          setLogs(logs.map(l => l.id === expandedImage.logId ? { ...l, images: newImages } : l));
+        }
+      }
+      
+      setExpandedImage(null);
+      if (onLogChange) onLogChange();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete image.');
+    }
+  };
 
   const handleDeleteLog = async (logId: string, logParticipants: number) => {
     if (!confirm('Are you sure you want to delete this log?')) return;
@@ -1168,15 +1226,37 @@ function EventDetailModal({ event, onClose, onLogChange }: EventDetailModalProps
             </div>
           </div>
 
-          {event.images && event.images.length > 0 && (
+          {combinedImages.length > 0 && (
             <div>
-              <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '0 0 6px', fontWeight: 700, textTransform: 'uppercase' }}>Event Gallery</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <p style={{ fontSize: '0.72rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Event Gallery</p>
+                <div>
+                  <input type="file" id="gallery-upload" style={{ display: 'none' }} accept="image/*" onChange={handleAddGalleryImage} />
+                  <button type="button" disabled={isUploadingImage} onClick={() => document.getElementById('gallery-upload')?.click()} style={{ background: 'transparent', border: 'none', color: '#2A9D8F', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Plus size={14} /> {isUploadingImage ? 'Uploading...' : 'Add Image'}
+                  </button>
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {event.images.map((img: string, idx: number) => (
-                  <img key={idx} src={img} alt="Event detail" style={{ width: '100px', height: '70px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => window.open(img, '_blank')} />
+                {combinedImages.map((img: any, idx: number) => (
+                  <img key={idx} src={img.url} alt="Event detail" style={{ width: '100px', height: '70px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => setExpandedImage(img)} />
                 ))}
               </div>
             </div>
+          )}
+          {combinedImages.length === 0 && (
+             <div>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                 <p style={{ fontSize: '0.72rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Event Gallery</p>
+                 <div>
+                   <input type="file" id="gallery-upload" style={{ display: 'none' }} accept="image/*" onChange={handleAddGalleryImage} />
+                   <button type="button" disabled={isUploadingImage} onClick={() => document.getElementById('gallery-upload')?.click()} style={{ background: 'transparent', border: 'none', color: '#2A9D8F', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                     <Plus size={14} /> {isUploadingImage ? 'Uploading...' : 'Add Image'}
+                   </button>
+                 </div>
+               </div>
+               <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>No images in gallery</p>
+             </div>
           )}
 
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
@@ -1322,7 +1402,7 @@ function EventDetailModal({ event, onClose, onLogChange }: EventDetailModalProps
                         <p style={{ fontSize: '0.7rem', color: '#64748b', margin: '0 0 6px', fontWeight: 700, textTransform: 'uppercase' }}>Attachments</p>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           {log.images.map((img: string, i: number) => (
-                            <img key={i} src={img} alt="Log attachment" style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => window.open(img, '_blank')} />
+                            <img key={i} src={img} alt="Log attachment" style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => setExpandedImage({ url: img, type: 'log', logId: log.id })} />
                           ))}
                         </div>
                       </div>
@@ -1338,6 +1418,15 @@ function EventDetailModal({ event, onClose, onLogChange }: EventDetailModalProps
           <button type="button" onClick={onClose} style={{ padding: '8px 16px', borderRadius: '8px', border: '1.5px solid #e2e8f0', background: 'white', color: '#64748b', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer' }}>Close</button>
         </div>
       </div>
+      {expandedImage && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', flexDirection: 'column' }} onClick={() => setExpandedImage(null)}>
+          <div style={{ alignSelf: 'flex-end', marginBottom: '10px' }}>
+             <button onClick={(e) => { e.stopPropagation(); handleDeleteGalleryImage(); }} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', marginRight: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}><Trash2 size={16} /> Delete</button>
+             <button onClick={() => setExpandedImage(null)} style={{ background: 'white', color: 'black', border: 'none', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'inline-flex' }}><X size={20} /></button>
+          </div>
+          <img src={expandedImage.url} alt="Expanded gallery" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px' }} onClick={e => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }
