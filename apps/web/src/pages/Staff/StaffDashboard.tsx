@@ -181,8 +181,13 @@ export default function StaffDashboard() {
       const cc = ccList.find(c => c.id === selectedCcId);
       if (!cc) return;
 
-      const participantsAdded = Number(ccFormData.participants_count || 0);
-      const newMeetings = (cc.meetings_conducted || 0) + (participantsAdded > 0 ? 1 : 0);
+      if (ccFormData.participants_count === '') {
+        alert('Please enter the number of participants.');
+        return;
+      }
+
+      const participantsAdded = Number(ccFormData.participants_count);
+      const newMeetings = (cc.meetings_conducted || 0) + 1;
       const newParticipants = (cc.participants_count || 0) + participantsAdded;
 
       const { error } = await supabase.from('community_collectives').update({
