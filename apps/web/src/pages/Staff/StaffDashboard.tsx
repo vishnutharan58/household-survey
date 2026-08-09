@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore, useDraftStore, useEditRequestStore, useLeaveRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail, fetchLeaveRequestsFromSupabase, createLeaveRequestInSupabase } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, PlusCircle, FileText, UploadCloud, MapPin, CheckCircle2, Clock, Pencil, Send, CheckCheck, XCircle, AlertCircle, ChevronDown, CalendarDays, Calendar, X, Users, Trash2, Award, Upload, Image } from 'lucide-react';
+import { LogOut, PlusCircle, FileText, UploadCloud, MapPin, CheckCircle2, Clock, Pencil, Send, CheckCheck, XCircle, AlertCircle, ChevronDown, CalendarDays, Calendar, X, Users, Trash2, Award, Upload } from 'lucide-react';
 
 
 // Hamlet codes per staff — mirrors Login.tsx
@@ -31,7 +31,6 @@ export default function StaffDashboard() {
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [eventsList, setEventsList] = useState<any[]>([]);
-  const [loadingEvents, setLoadingEvents] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [eventFormData, setEventFormData] = useState({
     achieved_participants: '',
@@ -45,7 +44,6 @@ export default function StaffDashboard() {
   const [eventUploading, setEventUploading] = useState(false);
 
   const fetchEvents = async () => {
-    setLoadingEvents(true);
     try {
       const supabase = getSupabase() as any;
       const { data } = await supabase.from('events').select('id, activity, sno').order('sno', { ascending: true });
@@ -53,7 +51,6 @@ export default function StaffDashboard() {
     } catch (err) {
       console.error(err);
     }
-    setLoadingEvents(false);
   };
 
   const handleEventImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
