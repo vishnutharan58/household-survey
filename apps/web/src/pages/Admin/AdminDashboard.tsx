@@ -4310,7 +4310,14 @@ export default function AdminDashboard() {
   const pendingRequestCount = Object.values(requests).filter(r => r.status === 'pending').length;
   const pendingLeaveCount = Object.values(leaveRequests).filter(r => r.status === 'pending').length;
 
-  const handleSignOut = () => { signOut(); navigate('/login'); };
+  const handleSignOut = async () => { 
+    try {
+      const supabase = getSupabase() as any;
+      await supabase.auth.signOut();
+    } catch(err) { console.error(err); }
+    signOut(); 
+    navigate('/login'); 
+  };
 
   const exportData = () => {
     const ws = XLSX.utils.json_to_sheet([

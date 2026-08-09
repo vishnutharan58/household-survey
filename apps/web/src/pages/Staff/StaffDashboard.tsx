@@ -512,7 +512,11 @@ export default function StaffDashboard() {
 
 
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      const supabase = getSupabase() as any;
+      await supabase.auth.signOut();
+    } catch(err) { console.error(err); }
     signOut();
     navigate('/login');
   };
