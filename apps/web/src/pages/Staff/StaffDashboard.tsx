@@ -97,10 +97,22 @@ export default function StaffDashboard() {
     
     try {
       const supabase = getSupabase() as any;
+      const newParticipants = parseInt(eventFormData.achieved_participants) || 0;
+
+      // 1. Fetch existing event to get current counts
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .select('achieved_programs, achieved_participants')
+        .eq('id', selectedEventId)
+        .single();
+        
+      if (eventError) throw eventError;
+
+      // 2. Insert report
       const { error } = await supabase.from('event_reports').insert([{
         event_id: selectedEventId,
         staff_email: user?.email || '',
-        achieved_participants: parseInt(eventFormData.achieved_participants) || 0,
+        achieved_participants: newParticipants,
         event_date: eventFormData.event_date || null,
         start_time: eventFormData.start_time,
         end_time: eventFormData.end_time,
@@ -110,6 +122,21 @@ export default function StaffDashboard() {
       }]);
       
       if (error) throw error;
+
+      // 3. Update events table
+      const currentPrograms = eventData.achieved_programs || 0;
+      const currentParticipants = eventData.achieved_participants || 0;
+      
+      const { error: updateError } = await supabase
+        .from('events')
+        .update({
+           achieved_programs: currentPrograms + 1,
+           achieved_participants: currentParticipants + newParticipants
+        })
+        .eq('id', selectedEventId);
+        
+      if (updateError) throw updateError;
+
       alert("Event details submitted successfully!");
       setIsEventModalOpen(false);
       setEventFormData({ achieved_participants: '', event_date: '', place: '', start_time: '', end_time: '', resource_person: '', images: [] });
