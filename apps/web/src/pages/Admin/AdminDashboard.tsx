@@ -982,13 +982,76 @@ function EditOtherServicesModal({ service, onClose, onSave }: EditOtherServicesM
 interface EventDetailModalProps {
   event: any;
   onClose: () => void;
+  onLogChange?: () => void;
 }
 
-function EventDetailModal({ event, onClose }: EventDetailModalProps) {
+function EventDetailModal({ event, onClose, onLogChange }: EventDetailModalProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [reportType, setReportType] = useState<'daily' | 'monthly' | 'quarterly' | 'duration'>('daily');
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [editLogForm, setEditLogForm] = useState<any>({});
+
+  const handleDeleteLog = async (logId: string, logParticipants: number) => {
+    if (!confirm('Are you sure you want to delete this log?')) return;
+    try {
+      const supabase = getSupabase() as any;
+      const { error } = await supabase.from('event_reports').delete().eq('id', logId);
+      if (error) throw error;
+      
+      const newLogs = logs.filter((l: any) => l.id !== logId);
+      setLogs(newLogs);
+      
+      const { data: eventData } = await supabase.from('events').select('achieved_programs, achieved_participants').eq('id', event.id).single();
+      if (eventData) {
+        await supabase.from('events').update({
+          achieved_programs: Math.max(0, (eventData.achieved_programs || 0) - 1),
+          achieved_participants: Math.max(0, (eventData.achieved_participants || 0) - logParticipants)
+        }).eq('id', event.id);
+      }
+      
+      if (onLogChange) onLogChange();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete log.');
+    }
+  };
+
+  const handleSaveLog = async () => {
+    try {
+      const supabase = getSupabase() as any;
+      const originalLog = logs.find(l => l.id === editingLogId);
+      const participantDiff = (parseInt(editLogForm.achieved_participants) || 0) - (originalLog.achieved_participants || 0);
+      
+      const { error } = await supabase.from('event_reports').update({
+        event_date: editLogForm.event_date,
+        place: editLogForm.place,
+        start_time: editLogForm.start_time,
+        end_time: editLogForm.end_time,
+        achieved_participants: parseInt(editLogForm.achieved_participants) || 0,
+        resource_person: editLogForm.resource_person
+      }).eq('id', editingLogId);
+      
+      if (error) throw error;
+      
+      setLogs(logs.map(l => l.id === editingLogId ? { ...l, ...editLogForm, achieved_participants: parseInt(editLogForm.achieved_participants) || 0 } : l));
+      setEditingLogId(null);
+      
+      if (participantDiff !== 0) {
+        const { data: eventData } = await supabase.from('events').select('achieved_participants').eq('id', event.id).single();
+        if (eventData) {
+          await supabase.from('events').update({
+            achieved_participants: Math.max(0, (eventData.achieved_participants || 0) + participantDiff)
+          }).eq('id', event.id);
+        }
+        if (onLogChange) onLogChange();
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update log.');
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'logs' && logs.length === 0) {
@@ -1187,31 +1250,72 @@ function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                       <div>
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A9D8F', background: 'rgba(42,157,143,0.1)', padding: '3px 8px', borderRadius: '4px' }}>{log.staff_email}</span>
                       </div>
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>{new Date(log.created_at).toLocaleString()}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>{new Date(log.created_at).toLocaleString()}</span>
+                        {editingLogId !== log.id && (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={() => { setEditingLogId(log.id); setEditLogForm(log); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }} title="Edit log"><Pencil size={14} /></button>
+                            <button onClick={() => handleDeleteLog(log.id, log.achieved_participants || 0)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444' }} title="Delete log"><Trash2 size={14} /></button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                      <div>
-                        <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Date</p>
-                        <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.event_date || '—'}</p>
+                    {editingLogId === log.id ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                        <div>
+                          <label style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>Date</label>
+                          <input type="date" value={editLogForm.event_date || ''} onChange={e => setEditLogForm({...editLogForm, event_date: e.target.value})} style={{ width: '100%', padding: '6px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>Place</label>
+                          <input type="text" value={editLogForm.place || ''} onChange={e => setEditLogForm({...editLogForm, place: e.target.value})} style={{ width: '100%', padding: '6px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>Start Time</label>
+                          <input type="time" value={editLogForm.start_time || ''} onChange={e => setEditLogForm({...editLogForm, start_time: e.target.value})} style={{ width: '100%', padding: '6px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>End Time</label>
+                          <input type="time" value={editLogForm.end_time || ''} onChange={e => setEditLogForm({...editLogForm, end_time: e.target.value})} style={{ width: '100%', padding: '6px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>Participants</label>
+                          <input type="number" value={editLogForm.achieved_participants || 0} onChange={e => setEditLogForm({...editLogForm, achieved_participants: e.target.value})} style={{ width: '100%', padding: '6px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>Resource Person</label>
+                          <input type="text" value={editLogForm.resource_person || ''} onChange={e => setEditLogForm({...editLogForm, resource_person: e.target.value})} style={{ width: '100%', padding: '6px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }} />
+                        </div>
+                        <div style={{ gridColumn: 'span 2', display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                          <button onClick={() => setEditingLogId(null)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', fontSize: '0.8rem', cursor: 'pointer' }}>Cancel</button>
+                          <button onClick={handleSaveLog} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#2A9D8F', color: 'white', fontSize: '0.8rem', cursor: 'pointer' }}>Save</button>
+                        </div>
                       </div>
-                      <div>
-                        <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Place</p>
-                        <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.place || '—'}</p>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                        <div>
+                          <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Date</p>
+                          <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.event_date || '—'}</p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Place</p>
+                          <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.place || '—'}</p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Timings</p>
+                          <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.start_time || '—'} to {log.end_time || '—'}</p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Participants</p>
+                          <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.achieved_participants || 0}</p>
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Resource Person</p>
+                          <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.resource_person || '—'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Timings</p>
-                        <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.start_time || '—'} to {log.end_time || '—'}</p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Participants</p>
-                        <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.achieved_participants || 0}</p>
-                      </div>
-                      <div style={{ gridColumn: 'span 2' }}>
-                        <p style={{ fontSize: '0.7rem', color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Resource Person</p>
-                        <p style={{ fontSize: '0.85rem', color: '#1e293b', margin: '2px 0 0', fontWeight: 600 }}>{log.resource_person || '—'}</p>
-                      </div>
-                    </div>
+                    )}
                     
                     {log.images && log.images.length > 0 && (
                       <div>
@@ -2433,6 +2537,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
         <EventDetailModal
           event={detailedEvent}
           onClose={() => setDetailedEvent(null)}
+          onLogChange={loadData}
         />
       )}
 
