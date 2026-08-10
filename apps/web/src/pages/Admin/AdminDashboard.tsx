@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuthStore, useDraftStore, useEditRequestStore, useLeaveRequestStore, fetchAdminSurveys, fetchDashboardStats, fetchSurveyDetail, getSupabase, fetchLeaveRequestsFromSupabase, updateLeaveRequestStatusInSupabase } from '@pro-vision-care/shared';
+import { useAuthStore, useDraftStore, useEditRequestStore, useLeaveRequestStore, fetchAdminSurveys, fetchDashboardStats, fetchSurveyDetail, getSupabase, fetchLeaveRequestsFromSupabase, updateLeaveRequestStatusInSupabase, generateCareExcel } from '@pro-vision-care/shared';
 import type { DraftSurvey } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -3552,7 +3552,8 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
 }
 
 // ─── Overview Tab ───────────────────────────────────────────────────
-function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => void, stats: any, loading: boolean, surveys: DraftSurvey[] }) {
+function OverviewTab({ onExport, stats, loading, surveys }: { onExport: (type: 'weekly' | 'monthly' | 'all') => void, stats: any, loading: boolean, surveys: DraftSurvey[] }) {
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [staffModalInitialTab, setStaffModalInitialTab] = useState<'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services' | 'sea_members'>('staff');
   const [staffCount, setStaffCount] = useState(9);
@@ -3730,9 +3731,18 @@ function OverviewTab({ onExport, stats, loading, surveys }: { onExport: () => vo
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>OVERVIEW OF CARE DASHBOARD</h1>
           <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}>Survey dashboard — Tamil Nadu Coastal Communities</p>
         </div>
-        <button id="admin-export" onClick={onExport} className="btn-accent">
-          <Download size={17} /> Export Data
-        </button>
+        <div style={{ position: 'relative' }}>
+          <button id="admin-export" onClick={() => setExportDropdownOpen(!exportDropdownOpen)} className="btn-accent">
+            <Download size={17} /> Export Data <ChevronDown size={14} style={{ marginLeft: '4px' }} />
+          </button>
+          {exportDropdownOpen && (
+            <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: '8px', background: 'white', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', padding: '8px', zIndex: 10, minWidth: '150px' }}>
+              <button onClick={() => { setExportDropdownOpen(false); onExport('weekly'); }} style={{ display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '0.85rem', borderRadius: '4px', color: '#1e293b' }} onMouseOver={e => e.currentTarget.style.background = '#f1f5f9'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>Export Weekly</button>
+              <button onClick={() => { setExportDropdownOpen(false); onExport('monthly'); }} style={{ display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '0.85rem', borderRadius: '4px', color: '#1e293b' }} onMouseOver={e => e.currentTarget.style.background = '#f1f5f9'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>Export Monthly</button>
+              <button onClick={() => { setExportDropdownOpen(false); onExport('all'); }} style={{ display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '0.85rem', borderRadius: '4px', color: '#1e293b' }} onMouseOver={e => e.currentTarget.style.background = '#f1f5f9'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>Export All Data</button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '28px' }}>
@@ -4319,14 +4329,8 @@ export default function AdminDashboard() {
     navigate('/login'); 
   };
 
-  const exportData = () => {
-    const ws = XLSX.utils.json_to_sheet([
-      { Household: 'H001', Staff: 'staff1@test.com', Hamlet: 'Hamlet A', Status: 'BPL' },
-      { Household: 'H002', Staff: 'staff2@test.com', Hamlet: 'Hamlet B', Status: 'APL' }
-    ]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Surveys');
-    XLSX.writeFile(wb, 'Survey_Export.xlsx');
+  const exportData = (filterType: 'weekly' | 'monthly' | 'all') => {
+    generateCareExcel(submittedSurveys, filterType);
   };
 
   const TABS: Array<{ id: 'overview' | 'surveys' | 'requests' | 'leaves', label: string, icon: any, badge?: number }> = [
