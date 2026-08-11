@@ -4333,7 +4333,7 @@ export default function AdminDashboard() {
   const exportData = async (filterType: 'weekly' | 'monthly' | 'all') => {
     try {
       setExporting(true);
-      const fullSurveys = await fetchAllSurveysForExport();
+      const fullSurveys = await fetchAllSurveysForExport(filterType);
       generateCareExcel(fullSurveys, filterType);
     } catch(err) {
       console.error(err);
