@@ -1,0 +1,1 @@
+const fs = require('fs'); let c = fs.readFileSync('supabase/schema.sql', 'utf8'); c = c.replace(/CREATE TABLE public\./g, 'CREATE TABLE IF NOT EXISTS public.'); fs.writeFileSync('supabase/schema.sql', c, 'utf8'); console.log('Done');

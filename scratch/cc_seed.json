@@ -1,0 +1,79 @@
+[
+  {
+    "sno": "1",
+    "name": "Arockiyapuram - 1",
+    "membership_count": 40,
+    "meetings_conducted": 4,
+    "participants_count": 117
+  },
+  {
+    "sno": "2",
+    "name": "Manakudy 1",
+    "membership_count": 19,
+    "meetings_conducted": 3,
+    "participants_count": 38
+  },
+  {
+    "sno": "3",
+    "name": "Manakudy 2",
+    "membership_count": 12,
+    "meetings_conducted": 2,
+    "participants_count": 16
+  },
+  {
+    "sno": "4",
+    "name": "Puthenthurai - 1",
+    "membership_count": 22,
+    "meetings_conducted": 3,
+    "participants_count": 36
+  },
+  {
+    "sno": "5",
+    "name": "Puthenthurai - 2",
+    "membership_count": 15,
+    "meetings_conducted": 1,
+    "participants_count": 21
+  },
+  {
+    "sno": "6",
+    "name": "Kesavanputhenthurai",
+    "membership_count": 27,
+    "meetings_conducted": 3,
+    "participants_count": 70
+  },
+  {
+    "sno": "7",
+    "name": "Rajakamangalamthurai 1",
+    "membership_count": 40,
+    "meetings_conducted": 4,
+    "participants_count": 74
+  },
+  {
+    "sno": "8",
+    "name": "Rajakamangalamthurai 2",
+    "membership_count": 30,
+    "meetings_conducted": 1,
+    "participants_count": 20
+  },
+  {
+    "sno": "9",
+    "name": "Simon colony",
+    "membership_count": 20,
+    "meetings_conducted": 1,
+    "participants_count": 20
+  },
+  {
+    "sno": "10",
+    "name": "Kodimunai 1",
+    "membership_count": 27,
+    "meetings_conducted": 3,
+    "participants_count": 60
+  },
+  {
+    "sno": "11",
+    "name": "Kodimunai 2",
+    "membership_count": 24,
+    "meetings_conducted": 3,
+    "participants_count": 47
+  }
+]
