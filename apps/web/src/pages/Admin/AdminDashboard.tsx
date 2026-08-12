@@ -655,6 +655,8 @@ interface EditStaffModalProps {
 }
 
 function EditStaffModal({ staff, onClose, onSave }: EditStaffModalProps) {
+  // @ts-ignore
+  const [password, setPassword] = useState('');
   const [sno, setSno] = useState(staff?.sno?.toString() || '');
   const [name, setName] = useState(staff?.name || '');
   const [bloodGroup, setBloodGroup] = useState(staff?.bloodGroup || '');
@@ -1568,6 +1570,10 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [schemesList, setSchemesList] = useState<any[]>([]);
   const [collectivesList, setCollectivesList] = useState<any[]>([]);
   const [attendanceList, setAttendanceList] = useState<any[]>([]);
+  // @ts-ignore
+  const [staffUsersList, setStaffUsersList] = useState<any[]>([]);
+  const [attendanceTimeFilter, setAttendanceTimeFilter] = useState<'daily'|'weekly'|'monthly'|'yearly'>('daily');
+  const [attendanceStaffFilter, setAttendanceStaffFilter] = useState<string>('all');
   const [servicesList, setServicesList] = useState<any[]>([]);
   const [seaMembersList, setSeaMembersList] = useState<any[]>([]);
   const [selectedSeaMember, setSelectedSeaMember] = useState<any | null>(null);
@@ -2474,59 +2480,129 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
               {/* ─── STAFF ATTENDANCE LOG TAB ─── */}
               {activeTab === 'attendance' && (
                 <div>
-                  <div style={{ marginBottom: '20px' }}>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B3A5C', margin: 0 }}>Daily Staff Attendance Logs</h3>
-                    <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px', margin: 0 }}>Real-time check-in and check-out tracking for CARE field team</p>
+                  <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B3A5C', margin: 0 }}>Staff Attendance Logs</h3>
+                      <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px', margin: 0 }}>Real-time check-in and check-out tracking</p>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <select 
+                        value={attendanceStaffFilter} 
+                        onChange={(e) => setAttendanceStaffFilter(e.target.value)}
+                        style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', background: 'white' }}
+                      >
+                        <option value="all">All Staff</option>
+                        {Array.from(new Set(attendanceList.map(l => l.email))).map(email => {
+                          const staffName = staffUsersList.find((s: any) => s.email === email)?.name 
+                                         || staffList.find((s: any) => s.email === email)?.name
+                                         || email.split('@')[0];
+                          return <option key={email} value={email}>{staffName.charAt(0).toUpperCase() + staffName.slice(1)}</option>;
+                        })}
+                      </select>
+
+                      <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                        {['daily', 'weekly', 'monthly', 'yearly'].map((tf) => (
+                          <button 
+                            key={tf}
+                            onClick={() => setAttendanceTimeFilter(tf as any)}
+                            style={{ 
+                              padding: '4px 12px', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                              background: attendanceTimeFilter === tf ? 'white' : 'transparent',
+                              color: attendanceTimeFilter === tf ? '#1B3A5C' : '#64748b',
+                              boxShadow: attendanceTimeFilter === tf ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                            }}
+                          >
+                            {tf.charAt(0).toUpperCase() + tf.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   
-                  {attendanceList.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#64748b' }}>
-                      <Clock size={36} style={{ display: 'block', margin: '0 auto 10px', opacity: 0.5 }} />
-                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>No attendance logs found for today.</p>
-                    </div>
-                  ) : (
-                    <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
-                        <thead>
-                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                            <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Staff Email</th>
-                            <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Date</th>
-                            <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Check-In Time</th>
-                            <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Check-Out Time</th>
-                            <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {attendanceList.map((log) => {
-                            const dateStr = new Date(log.login_time || log.loginTime).toLocaleDateString();
-                            const inTime = new Date(log.login_time || log.loginTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                            const outTime = (log.logout_time || log.logoutTime) 
-                              ? new Date(log.logout_time || log.logoutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                              : '—';
-                            const isCompleted = !!(log.logout_time || log.logoutTime);
-                            
-                            return (
-                              <tr key={log.id}>
-                                <td style={{ padding: '14px 16px', fontWeight: 700, color: '#334155' }}>{log.email}</td>
-                                <td style={{ padding: '14px 16px', color: '#475569' }}>{dateStr}</td>
-                                <td style={{ padding: '14px 16px', color: '#2A9D8F', fontWeight: 600 }}>{inTime}</td>
-                                <td style={{ padding: '14px 16px', color: isCompleted ? '#ef4444' : '#64748b', fontWeight: 600 }}>{outTime}</td>
-                                <td style={{ padding: '14px 16px' }}>
-                                  <span style={{
-                                    background: isCompleted ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-                                    color: isCompleted ? '#10b981' : '#f59e0b',
-                                    padding: '3px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700
-                                  }}>
-                                    {isCompleted ? 'Completed' : 'On Duty'}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                  {(() => {
+                    let filtered = attendanceList;
+                    if (attendanceStaffFilter !== 'all') {
+                      filtered = filtered.filter(l => l.email === attendanceStaffFilter);
+                    }
+                    
+                    const now = new Date();
+                    filtered = filtered.filter(log => {
+                      const logDate = new Date(log.login_time || log.loginTime);
+                      if (attendanceTimeFilter === 'daily') {
+                        return logDate.toDateString() === now.toDateString();
+                      } else if (attendanceTimeFilter === 'weekly') {
+                        const diff = now.getTime() - logDate.getTime();
+                        return diff <= 7 * 24 * 60 * 60 * 1000;
+                      } else if (attendanceTimeFilter === 'monthly') {
+                        return logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
+                      } else if (attendanceTimeFilter === 'yearly') {
+                        return logDate.getFullYear() === now.getFullYear();
+                      }
+                      return true;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#64748b' }}>
+                          <Clock size={36} style={{ display: 'block', margin: '0 auto 10px', opacity: 0.5 }} />
+                          <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>No attendance logs found for selected filters.</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+                          <thead>
+                            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                              <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Staff Name</th>
+                              <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Date</th>
+                              <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Check-In Time</th>
+                              <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Check-Out Time</th>
+                              <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filtered.map((log) => {
+                              const dateStr = new Date(log.login_time || log.loginTime).toLocaleDateString();
+                              const inTime = new Date(log.login_time || log.loginTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                              const outTime = (log.logout_time || log.logoutTime) 
+                                ? new Date(log.logout_time || log.logoutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                : '—';
+                              const isCompleted = !!(log.logout_time || log.logoutTime);
+                              
+                              let rawStaffName = staffUsersList.find((s: any) => s.email === log.email)?.name 
+                                           || staffList.find((s: any) => s.email === log.email)?.name
+                                           || log.email.split('@')[0];
+                                           
+                              const staffName = rawStaffName.charAt(0).toUpperCase() + rawStaffName.slice(1);
+
+                              return (
+                                <tr key={log.id}>
+                                  <td style={{ padding: '14px 16px', fontWeight: 700, color: '#334155' }}>
+                                    {staffName} <span style={{fontSize: '0.7rem', color: '#94a3b8', display: 'block', fontWeight: 400}}>{log.email}</span>
+                                  </td>
+                                  <td style={{ padding: '14px 16px', color: '#475569' }}>{dateStr}</td>
+                                  <td style={{ padding: '14px 16px', color: '#2A9D8F', fontWeight: 600 }}>{inTime}</td>
+                                  <td style={{ padding: '14px 16px', color: isCompleted ? '#ef4444' : '#64748b', fontWeight: 600 }}>{outTime}</td>
+                                  <td style={{ padding: '14px 16px' }}>
+                                    <span style={{
+                                      background: isCompleted ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+                                      color: isCompleted ? '#10b981' : '#f59e0b',
+                                      padding: '3px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700
+                                    }}>
+                                      {isCompleted ? 'Completed' : 'On Duty'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
