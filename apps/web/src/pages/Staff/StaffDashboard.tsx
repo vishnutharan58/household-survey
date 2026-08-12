@@ -304,22 +304,30 @@ export default function StaffDashboard() {
         
         if (data && data.length > 0) {
           const log = data[0];
-          setAttendanceId(log.id);
-          setCheckInTime(log.login_time);
-          if (log.logout_time) {
-            setCheckOutTime(log.logout_time);
-            setAttendanceStatus('checked_out');
+          const logDate = new Date(log.login_time).toDateString();
+          const todayDate = new Date().toDateString();
+          
+          if (logDate === todayDate) {
+            setAttendanceId(log.id);
+            setCheckInTime(log.login_time);
+            if (log.logout_time) {
+              setCheckOutTime(log.logout_time);
+              setAttendanceStatus('checked_out');
+            } else {
+              setAttendanceStatus('checked_in');
+            }
           } else {
-            setAttendanceStatus('checked_in');
+            setAttendanceStatus('not_checked_in');
           }
         } else {
           setAttendanceStatus('not_checked_in');
         }
       } catch (err) {
         console.warn("Failed to fetch attendance from database, using localStorage fallback:", err);
-                const localLogs = localStorage.getItem('care_attendance_logs');
+        const localLogs = localStorage.getItem('care_attendance_logs');
         const logs = localLogs ? JSON.parse(localLogs) : [];
-        const todayLog = logs.findLast((l: any) => l.email === user.email);
+        const todayDate = new Date().toDateString();
+        const todayLog = logs.findLast((l: any) => l.email === user.email && new Date(l.loginTime).toDateString() === todayDate);
         
         if (todayLog) {
           setCheckInTime(todayLog.loginTime);
