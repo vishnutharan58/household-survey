@@ -1455,6 +1455,16 @@ export default function StaffDashboard() {
 
                   <div style={{ display: 'flex', gap: '16px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Membership Count</label>
+                      <input 
+                        type="text" 
+                        value={ccList.find(c => c.id === selectedCcId)?.membership_count || 0} 
+                        readOnly
+                        disabled
+                        style={{ padding: '12px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', outline: 'none', background: '#f1f5f9', color: '#64748b', cursor: 'not-allowed', fontWeight: 600 }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
                       <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Participants (Add)</label>
                       <input 
                         type="number" 
