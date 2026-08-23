@@ -1,6 +1,6 @@
 // Removed unused React import
 import { useState, useEffect } from 'react';
-import { useAuthStore, useDraftStore, useEditRequestStore, useLeaveRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail, fetchLeaveRequestsFromSupabase, createLeaveRequestInSupabase } from '@pro-vision-care/shared';
+import { useAuthStore, useDraftStore, useEditRequestStore, useLeaveRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail, fetchLeaveRequestsFromSupabase, createLeaveRequestInSupabase, formatDateDDMMYYYY } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, PlusCircle, FileText, UploadCloud, MapPin, CheckCircle2, Clock, Pencil, Send, CheckCheck, XCircle, AlertCircle, ChevronDown, CalendarDays, Calendar, X, Users, Award, Upload } from 'lucide-react';
 
@@ -33,6 +33,7 @@ export default function StaffDashboard() {
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [eventsList, setEventsList] = useState<any[]>([]);
+  const [staffUsersList, setStaffUsersList] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [eventFormData, setEventFormData] = useState({
     achieved_participants: '',
@@ -44,6 +45,13 @@ export default function StaffDashboard() {
     images: [] as string[]
   });
   const [eventUploading, setEventUploading] = useState(false);
+
+  const fetchStaffUsers = async () => {
+    try {
+      const { data, error } = await supabase.from('staff_users').select('*');
+      if (data) setStaffUsersList(data);
+    } catch (err) {}
+  };
 
   const fetchEvents = async () => {
     try {
@@ -120,6 +128,7 @@ export default function StaffDashboard() {
         end_time: eventFormData.end_time || null,
         place: eventFormData.place || null,
         resource_person: eventFormData.resource_person,
+        staff_name: eventFormData.staff_name,
         images: eventFormData.images
       }]);
       
@@ -141,7 +150,7 @@ export default function StaffDashboard() {
 
       alert("Event details submitted successfully!");
       setIsEventModalOpen(false);
-      setEventFormData({ achieved_participants: '', event_date: '', place: '', start_time: '', end_time: '', resource_person: '', images: [] });
+      setEventFormData({ achieved_participants: '', event_date: '', place: '', start_time: '', end_time: '', resource_person: '', staff_name: '', images: [] });
       setSelectedEventId('');
     } catch(err) {
       console.error(err);
@@ -700,6 +709,7 @@ export default function StaffDashboard() {
                 onClick={() => {
                   setIsEventModalOpen(true);
                   fetchEvents();
+    fetchStaffUsers();
                 }}
                 style={{
                   background: 'linear-gradient(135deg, #10b981, #059669)',
@@ -1193,7 +1203,7 @@ export default function StaffDashboard() {
                   )}
 
                   <div style={{ fontSize: '0.7rem', color: '#94a3b8', textAlign: 'right' }}>
-                    Submitted: {new Date(req.createdAt).toLocaleDateString()}
+                    Submitted: {formatDateDDMMYYYY(req.createdAt)}
                   </div>
                 </div>
               ))}
@@ -1369,6 +1379,16 @@ export default function StaffDashboard() {
 
                     <div>
                       <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Resource Person</label>
+                      
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Staff Name</label>
+                      <select required value={eventFormData.staff_name} onChange={e => setEventFormData({...eventFormData, staff_name: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'white' }}>
+                        <option value="">-- Select Staff Member --</option>
+                        {staffUsersList.map(staff => (
+                          <option key={staff.id} value={staff.name}>{staff.name}</option>
+                        ))}
+                      </select>
+
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px', marginTop: '12px' }}>Resource Person</label>
                       <input type="text" required value={eventFormData.resource_person} onChange={e => setEventFormData({...eventFormData, resource_person: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} placeholder="E.g. Dr. John Doe" />
                     </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuthStore, useDraftStore, useEditRequestStore, useLeaveRequestStore, fetchAdminSurveys, fetchAllSurveysForExport, fetchDashboardStats, fetchSurveyDetail, getSupabase, fetchLeaveRequestsFromSupabase, updateLeaveRequestStatusInSupabase, generateCareExcel } from '@pro-vision-care/shared';
+import { useAuthStore, useDraftStore, useEditRequestStore, useLeaveRequestStore, fetchAdminSurveys, fetchAllSurveysForExport, fetchDashboardStats, fetchSurveyDetail, getSupabase, fetchLeaveRequestsFromSupabase, updateLeaveRequestStatusInSupabase, generateCareExcel, formatDateDDMMYYYY } from '@pro-vision-care/shared';
 import type { DraftSurvey } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -1573,6 +1573,11 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   // @ts-ignore
   const [staffUsersList, setStaffUsersList] = useState<any[]>([]);
   const [attendanceTimeFilter, setAttendanceTimeFilter] = useState<'daily'|'weekly'|'monthly'|'yearly'>('daily');
+  const [attendanceFromDate, setAttendanceFromDate] = useState<string>('');
+  const [attendanceToDate, setAttendanceToDate] = useState<string>('');
+  const [attendanceMonth, setAttendanceMonth] = useState<string>(String(new Date().getMonth()));
+  const [attendanceYear, setAttendanceYear] = useState<string>(String(new Date().getFullYear()));
+
   const [attendanceStaffFilter, setAttendanceStaffFilter] = useState<string>('all');
   const [servicesList, setServicesList] = useState<any[]>([]);
   const [seaMembersList, setSeaMembersList] = useState<any[]>([]);
@@ -2517,6 +2522,31 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                           </button>
                         ))}
                       </div>
+                      {attendanceTimeFilter === 'weekly' && (
+                        <div style={{ display: 'flex', gap: '8px', marginLeft: '12px' }}>
+                          <input type="date" value={attendanceFromDate} onChange={e => setAttendanceFromDate(e.target.value)} style={{ padding: '4px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                          <span style={{ fontSize: '0.75rem', alignSelf: 'center' }}>to</span>
+                          <input type="date" value={attendanceToDate} onChange={e => setAttendanceToDate(e.target.value)} style={{ padding: '4px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                        </div>
+                      )}
+                      {attendanceTimeFilter === 'monthly' && (
+                        <div style={{ display: 'flex', gap: '8px', marginLeft: '12px' }}>
+                          <select value={attendanceMonth} onChange={e => setAttendanceMonth(e.target.value)} style={{ padding: '4px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                            {Array.from({length: 12}).map((_, i) => <option key={i} value={i}>{new Date(0, i).toLocaleString('en', {month:'short'})}</option>)}
+                          </select>
+                          <select value={attendanceYear} onChange={e => setAttendanceYear(e.target.value)} style={{ padding: '4px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                            {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                          </select>
+                        </div>
+                      )}
+                      {attendanceTimeFilter === 'yearly' && (
+                        <div style={{ marginLeft: '12px' }}>
+                          <select value={attendanceYear} onChange={e => setAttendanceYear(e.target.value)} style={{ padding: '4px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                            {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                          </select>
+                        </div>
+                      )}
+
                     </div>
                   </div>
                   
@@ -2532,11 +2562,23 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                       if (attendanceTimeFilter === 'daily') {
                         return logDate.toDateString() === now.toDateString();
                       } else if (attendanceTimeFilter === 'weekly') {
+                        if (attendanceFromDate && attendanceToDate) {
+                          const from = new Date(attendanceFromDate);
+                          const to = new Date(attendanceToDate);
+                          to.setHours(23, 59, 59, 999);
+                          return logDate >= from && logDate <= to;
+                        }
                         const diff = now.getTime() - logDate.getTime();
                         return diff <= 7 * 24 * 60 * 60 * 1000;
                       } else if (attendanceTimeFilter === 'monthly') {
+                        if (attendanceMonth) {
+                          return logDate.getMonth() === parseInt(attendanceMonth) && (attendanceYear ? logDate.getFullYear() === parseInt(attendanceYear) : logDate.getFullYear() === now.getFullYear());
+                        }
                         return logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
                       } else if (attendanceTimeFilter === 'yearly') {
+                        if (attendanceYear) {
+                          return logDate.getFullYear() === parseInt(attendanceYear);
+                        }
                         return logDate.getFullYear() === now.getFullYear();
                       }
                       return true;
@@ -2547,6 +2589,19 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                         <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#64748b' }}>
                           <Clock size={36} style={{ display: 'block', margin: '0 auto 10px', opacity: 0.5 }} />
                           <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>No attendance logs found for selected filters.</p>
+      {/* Toast Notification */}
+      {toastNotification.visible && (
+        <div style={{
+          position: 'fixed', bottom: '20px', right: '20px', backgroundColor: '#10b981', color: 'white',
+          padding: '12px 20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          zIndex: 9999, fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px',
+          animation: 'fadeIn 0.3s'
+        }}>
+          <Bell size={18} />
+          {toastNotification.message}
+        </div>
+      )}
+  
                         </div>
                       );
                     }
@@ -2565,7 +2620,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                           </thead>
                           <tbody>
                             {filtered.map((log) => {
-                              const dateStr = new Date(log.login_time || log.loginTime).toLocaleDateString();
+                              const dateStr = formatDateDDMMYYYY(log.login_time || log.loginTime);
                               const inTime = new Date(log.login_time || log.loginTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                               const outTime = (log.logout_time || log.logoutTime) 
                                 ? new Date(log.logout_time || log.logoutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -3439,7 +3494,7 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: '#374151' }}>
                   <CalendarDays size={12} color="#94a3b8" />
-                  {new Date(survey.lastSavedAt).toLocaleDateString()}
+                  {formatDateDDMMYYYY(survey.lastSavedAt)}
                 </div>
                 <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '2px 0 0 16px' }}>
                   {new Date(survey.lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -4418,6 +4473,34 @@ export default function AdminDashboard() {
       setExporting(false);
     }
   };
+
+  
+  // Leave Request Polling for Notification
+  const [toastNotification, setToastNotification] = useState<{message: string, visible: boolean}>({message: '', visible: false});
+  const prevPendingLeaves = useRef<number>(0);
+
+  useEffect(() => {
+    // Initial fetch handled above, now set up polling
+    const interval = setInterval(async () => {
+      try {
+        const data = await fetchLeaveRequestsFromSupabase();
+        if (data && data.length > 0) {
+          setLeaveRequests(data);
+          const currentPending = data.filter((r: any) => r.status === 'pending').length;
+          if (currentPending > prevPendingLeaves.current && prevPendingLeaves.current !== 0) {
+            // Show toast
+            setToastNotification({ message: 'New Leave Request Received!', visible: true });
+            setTimeout(() => setToastNotification({ message: '', visible: false }), 5000);
+          }
+          prevPendingLeaves.current = currentPending;
+        }
+      } catch (err) {
+        console.warn("Leave polling error:", err);
+      }
+    }, 15000); // Check every 15 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const TABS: Array<{ id: 'overview' | 'surveys' | 'requests' | 'leaves', label: string, icon: any, badge?: number }> = [
     { id: 'overview',    label: 'Overview',           icon: LayoutDashboard },
