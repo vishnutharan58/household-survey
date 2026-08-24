@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore, useDraftStore, useEditRequestStore, useLeaveRequestStore, fetchAdminSurveys, fetchAllSurveysForExport, fetchDashboardStats, fetchSurveyDetail, getSupabase, fetchLeaveRequestsFromSupabase, updateLeaveRequestStatusInSupabase, generateCareExcel, formatDateDDMMYYYY } from '@pro-vision-care/shared';
 import type { DraftSurvey } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
@@ -2620,18 +2620,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                         <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#64748b' }}>
                           <Clock size={36} style={{ display: 'block', margin: '0 auto 10px', opacity: 0.5 }} />
                           <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>No attendance logs found for selected filters.</p>
-      {/* Toast Notification */}
-      {toastNotification.visible && (
-        <div style={{
-          position: 'fixed', bottom: '20px', right: '20px', backgroundColor: '#10b981', color: 'white',
-          padding: '12px 20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          zIndex: 9999, fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px',
-          animation: 'fadeIn 0.3s'
-        }}>
-          <Bell size={18} />
-          {toastNotification.message}
-        </div>
-      )}
+
   
                         </div>
                       );
@@ -4618,6 +4607,19 @@ export default function AdminDashboard() {
         {activeTab === 'requests'    && <EditRequestsTab />}
         {activeTab === 'leaves'      && <LeaveRequestsTab />}
       </main>
+
+      {/* Toast Notification */}
+      {toastNotification.visible && (
+        <div style={{
+          position: 'fixed', bottom: '20px', right: '20px', backgroundColor: '#10b981', color: 'white',
+          padding: '12px 20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          zIndex: 9999, fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px',
+          animation: 'fadeIn 0.3s'
+        }}>
+          <Bell size={18} />
+          {toastNotification.message}
+        </div>
+      )}
     </div>
   );
 }

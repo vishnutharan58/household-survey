@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuthStore, useDraftStore, useEditRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail, fetchOtherServicesList, formatDateDDMMYYYY } from '@pro-vision-care/shared';
+import { useAuthStore, useDraftStore, useEditRequestStore, syncDraftToSupabase, getSupabase, fetchSurveyDetail, fetchOtherServicesList } from '@pro-vision-care/shared';
 import type { DraftSurvey } from '@pro-vision-care/shared';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, Send, Eye, Pencil, Lock, AlertCircle, Trash2 } from 'lucide-react';

@@ -42,13 +42,15 @@ export default function StaffDashboard() {
     start_time: '',
     end_time: '',
     resource_person: '',
+    staff_name: '',
     images: [] as string[]
   });
   const [eventUploading, setEventUploading] = useState(false);
 
   const fetchStaffUsers = async () => {
     try {
-      const { data, error } = await supabase.from('staff_users').select('*');
+      const supabase = getSupabase() as any;
+      const { data } = await supabase.from('staff_users').select('*');
       if (data) setStaffUsersList(data);
     } catch (err) {}
   };

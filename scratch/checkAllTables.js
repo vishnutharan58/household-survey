@@ -9,7 +9,7 @@ const supabase = createClient(
 async function run() {
   const { data, error } = await supabase.auth.signInWithPassword({
     email: 'admin@provision.com',
-    admin123: 'password' // Assuming this is correct from earlier scripts
+    password: 'admin123'
   });
 
   if (error) {
