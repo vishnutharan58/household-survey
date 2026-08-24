@@ -1577,13 +1577,18 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [attendanceList, setAttendanceList] = useState<any[]>([]);
   // @ts-ignore
   const [staffUsersList, setStaffUsersList] = useState<any[]>([]);
-  const [attendanceTimeFilter, setAttendanceTimeFilter] = useState<'daily'|'weekly'|'monthly'|'yearly'>('daily');
-  const [attendanceFromDate, setAttendanceFromDate] = useState<string>('');
-  const [attendanceToDate, setAttendanceToDate] = useState<string>('');
+  const [attendanceStaffFilter, setAttendanceStaffFilter] = useState<string>('all');
+  const [attendanceSubTab, setAttendanceSubTab] = useState<'date_wise' | 'monthly' | 'staff_wise' | 'manage'>('monthly');
+  
+  const handleExportXLS = (filename: string) => {
+    const table = document.getElementById('attendance-table');
+    if (!table) return;
+    const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet JS" });
+    XLSX.writeFile(wb, filename + '.xlsx');
+  };
+  const [attendanceSelectedDate, setAttendanceSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [attendanceMonth, setAttendanceMonth] = useState<string>(String(new Date().getMonth()));
   const [attendanceYear, setAttendanceYear] = useState<string>(String(new Date().getFullYear()));
-
-  const [attendanceStaffFilter, setAttendanceStaffFilter] = useState<string>('all');
   const [servicesList, setServicesList] = useState<any[]>([]);
   const [seaMembersList, setSeaMembersList] = useState<any[]>([]);
   const [selectedSeaMember, setSelectedSeaMember] = useState<any | null>(null);
@@ -1623,6 +1628,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
       if (evErr) throw evErr;
       
       const { data: dbStaff } = await supabase.from('staff_details').select('*').order('sno', { ascending: true });
+      const { data: dbStaffUsers } = await supabase.from('staff_users').select('*');
       const { data: dbCollectives } = await supabase.from('community_collectives').select('*').order('sno', { ascending: true });
       const { data: dbDocs } = await supabase.from('documents_list').select('*').order('sno', { ascending: true });
       const { data: dbSchemes } = await supabase.from('schemes_list').select('*').order('sno', { ascending: true });
@@ -1633,13 +1639,32 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
 
       
       setEventsList(dbEvents && dbEvents.length > 0 ? dbEvents.map(mapDbEventToUi) : EVENT_DETAILS);
+      if (dbEvents && dbEvents.length > 0) {
+        localStorage.setItem('care_portal_events', JSON.stringify(dbEvents.map(mapDbEventToUi)));
+      }
+      
+      if (dbStaffUsers && dbStaffUsers.length > 0) {
+        setStaffUsersList(dbStaffUsers);
+      }
       
       if (dbStaff && dbStaff.length > 0) {
-        setStaffList(dbStaff.map((s: any) => ({
+        const mappedStaff = dbStaff.map((s: any) => ({
           id: s.id, sno: s.sno, name: s.name, bloodGroup: s.blood_group, qualification: s.qualification, phone: s.phone, designation: s.designation, email: s.email, joiningDate: s.joining_date, workExperience: s.work_experience
-        })));
+        }));
+        setStaffList(mappedStaff);
+        localStorage.setItem('care_portal_staff', JSON.stringify(mappedStaff));
       } else {
         setStaffList(INITIAL_STAFF_DETAILS);
+      }
+
+      if (dbCollectives && dbCollectives.length > 0) {
+        setCollectivesList(dbCollectives);
+        localStorage.setItem('care_portal_collectives', JSON.stringify(dbCollectives));
+      }
+
+      if (dbSeaMembers && dbSeaMembers.length > 0) {
+        setSeaMembersList(dbSeaMembers);
+        localStorage.setItem('care_sea_members', JSON.stringify(dbSeaMembers));
       }
       
       setCollectivesList(dbCollectives && dbCollectives.length > 0 ? dbCollectives : INITIAL_COLLECTIVES);
@@ -2515,171 +2540,386 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
 
               {/* ─── STAFF ATTENDANCE LOG TAB ─── */}
               {activeTab === 'attendance' && (
-                <div>
-                  <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B3A5C', margin: 0 }}>Staff Attendance Logs</h3>
-                      <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px', margin: 0 }}>Real-time check-in and check-out tracking</p>
-                    </div>
-                    
-                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <select 
-                        value={attendanceStaffFilter} 
-                        onChange={(e) => setAttendanceStaffFilter(e.target.value)}
-                        style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', background: 'white' }}
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '16px' }}>
+                    {[
+                      { id: 'date_wise', label: 'DATE WISE REPORT' },
+                      { id: 'monthly', label: 'MONTHLY REPORT' },
+                      { id: 'staff_wise', label: 'STAFF WISE REPORT' }
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setAttendanceSubTab(tab.id as any)}
+                        style={{
+                          padding: '12px 24px',
+                          background: attendanceSubTab === tab.id ? '#e2e8f0' : 'none',
+                          border: '1px solid',
+                          borderColor: attendanceSubTab === tab.id ? '#cbd5e1' : 'transparent',
+                          borderBottom: 'none',
+                          borderTopLeftRadius: '8px',
+                          borderTopRightRadius: '8px',
+                          color: attendanceSubTab === tab.id ? '#1B3A5C' : '#64748b',
+                          fontWeight: attendanceSubTab === tab.id ? 800 : 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                        }}
                       >
-                        <option value="all">All Staff</option>
-                        {Array.from(new Set(attendanceList.map(l => l.email))).map(email => {
-                          const staffName = staffUsersList.find((s: any) => s.email === email)?.name 
-                                         || staffList.find((s: any) => s.email === email)?.name
-                                         || email.split('@')[0];
-                          return <option key={email} value={email}>{staffName.charAt(0).toUpperCase() + staffName.slice(1)}</option>;
-                        })}
-                      </select>
-
-                      <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
-                        {['daily', 'weekly', 'monthly', 'yearly'].map((tf) => (
-                          <button 
-                            key={tf}
-                            onClick={() => setAttendanceTimeFilter(tf as any)}
-                            style={{ 
-                              padding: '4px 12px', border: 'none', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
-                              background: attendanceTimeFilter === tf ? 'white' : 'transparent',
-                              color: attendanceTimeFilter === tf ? '#1B3A5C' : '#64748b',
-                              boxShadow: attendanceTimeFilter === tf ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                            }}
-                          >
-                            {tf.charAt(0).toUpperCase() + tf.slice(1)}
-                          </button>
-                        ))}
-                      </div>
-                      {attendanceTimeFilter === 'weekly' && (
-                        <div style={{ display: 'flex', gap: '8px', marginLeft: '12px' }}>
-                          <input type="date" value={attendanceFromDate} onChange={e => setAttendanceFromDate(e.target.value)} style={{ padding: '4px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-                          <span style={{ fontSize: '0.75rem', alignSelf: 'center' }}>to</span>
-                          <input type="date" value={attendanceToDate} onChange={e => setAttendanceToDate(e.target.value)} style={{ padding: '4px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-                        </div>
-                      )}
-                      {attendanceTimeFilter === 'monthly' && (
-                        <div style={{ display: 'flex', gap: '8px', marginLeft: '12px' }}>
-                          <select value={attendanceMonth} onChange={e => setAttendanceMonth(e.target.value)} style={{ padding: '4px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
-                            {Array.from({length: 12}).map((_, i) => <option key={i} value={i}>{new Date(0, i).toLocaleString('en', {month:'short'})}</option>)}
-                          </select>
-                          <select value={attendanceYear} onChange={e => setAttendanceYear(e.target.value)} style={{ padding: '4px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
-                            {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-                          </select>
-                        </div>
-                      )}
-                      {attendanceTimeFilter === 'yearly' && (
-                        <div style={{ marginLeft: '12px' }}>
-                          <select value={attendanceYear} onChange={e => setAttendanceYear(e.target.value)} style={{ padding: '4px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
-                            {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-                          </select>
-                        </div>
-                      )}
-
-                    </div>
+                        {tab.label}
+                      </button>
+                    ))}
                   </div>
-                  
-                  {(() => {
-                    let filtered = attendanceList;
-                    if (attendanceStaffFilter !== 'all') {
-                      filtered = filtered.filter(l => l.email === attendanceStaffFilter);
-                    }
+
+                  {attendanceSubTab === 'monthly' && (
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '0 10px 20px 10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1e293b', marginBottom: '4px' }}>Month:</label>
+                            <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden' }}>
+                              <select value={attendanceMonth} onChange={e => setAttendanceMonth(e.target.value)} style={{ padding: '8px 10px', border: 'none', fontSize: '0.9rem', outline: 'none', background: 'white' }}>
+                                {Array.from({length: 12}).map((_, i) => <option key={i} value={i}>{new Date(0, i).toLocaleString('en', {month:'long'})}</option>)}
+                              </select>
+                              <span style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'white', borderLeft: '1px solid #cbd5e1' }}>,</span>
+                              <select value={attendanceYear} onChange={e => setAttendanceYear(e.target.value)} style={{ padding: '8px 10px', border: 'none', fontSize: '0.9rem', outline: 'none', background: 'white' }}>
+                                {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '22px' }}>
+                            <button style={{ padding: '8px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(37,99,235,0.2)' }}>SUBMIT</button>
+                            <button onClick={() => window.print()} style={{ padding: '8px 16px', background: '#f97316', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(249,115,22,0.2)' }}>PRINT</button>
+                            <button onClick={() => handleExportXLS(`Monthly_Attendance_${attendanceMonth}_${attendanceYear}`)} style={{ padding: '8px 16px', background: '#38bdf8', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(56,189,248,0.2)' }}>EXPORT AS XLS</button>
+                          </div>
+                        </div>
+                        <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.95rem', marginTop: '10px' }}>
+                          Total Working Days: 
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const m = parseInt(attendanceMonth);
+                        const y = parseInt(attendanceYear);
+                        const daysInMonth = new Date(y, m + 1, 0).getDate();
+                        const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
+
+                        // Pre-process attendance data
+                        const staffMap = new Map();
+                        staffList.forEach(s => staffMap.set((s.email || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, logs: {} }));
+                        
+                        // Add staff from staffUsersList if not present
+                        staffUsersList.forEach(s => {
+                          if (s.email && !staffMap.has(s.email.toLowerCase())) {
+                            staffMap.set(s.email.toLowerCase(), { sno: staffMap.size + 1, name: s.name, email: s.email, logs: {} });
+                          }
+                        });
+
+                        attendanceList.forEach(log => {
+                          if (!log.email) return;
+                          const emailKey = log.email.toLowerCase();
+                          // Ensure they are in the map even if not in staffList
+                          if (!staffMap.has(emailKey)) {
+                            staffMap.set(emailKey, { sno: staffMap.size + 1, name: log.email.split('@')[0], email: log.email, logs: {} });
+                          }
+                          const date = new Date(log.login_time || log.loginTime);
+                          if (date.getMonth() === m && date.getFullYear() === y) {
+                            const d = date.getDate();
+                            staffMap.get(emailKey).logs[d] = true;
+                          }
+                        });
+
+                        const tableStaff = Array.from(staffMap.values()).sort((a, b) => a.sno - b.sno);
+
+                        return (
+                          <div style={{ overflowX: 'auto', border: '1px solid #94a3b8', background: 'white' }}>
+                            <table id="attendance-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.8rem', minWidth: '900px' }}>
+                              <thead>
+                                <tr>
+                                  <th colSpan={daysInMonth + 2} style={{ padding: '10px', fontSize: '1.1rem', fontWeight: 600, borderBottom: '1px solid #94a3b8', color: '#1e293b' }}>
+                                    Staff Attendance - {new Date(y, m).toLocaleString('en', {month:'short'})} {y}
+                                  </th>
+                                </tr>
+                                <tr style={{ borderBottom: '1px solid #94a3b8' }}>
+                                  <th style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', width: '40px' }}>S.No</th>
+                                  <th style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', textAlign: 'left', minWidth: '160px' }}>Staff Name</th>
+                                  {days.map(d => (
+                                    <th key={d} style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', width: '28px' }}>{d}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {tableStaff.map((s, idx) => (
+                                  <tr key={s.email} style={{ borderBottom: '1px solid #94a3b8' }}>
+                                    <td style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', color: '#334155' }}>{idx + 1}</td>
+                                    <td style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#64748b' }}>{s.name}</td>
+                                    {days.map(d => {
+                                      const isSunday = new Date(y, m, d).getDay() === 0;
+                                      const isPresent = s.logs[d];
+                                      let cellText = isSunday ? 'S' : (isPresent ? 'X' : 'A');
+                                      let color = isSunday ? '#eab308' : (isPresent ? '#22c55e' : '#ef4444');
+                                      return (
+                                        <td key={d} style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', fontWeight: 800, color: color }}>
+                                          {cellText}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {attendanceSubTab === 'date_wise' && (
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '0 10px 20px 10px' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1e293b', marginBottom: '4px' }}>Date:</label>
+                          <input 
+                            type="date" 
+                            value={attendanceSelectedDate} 
+                            onChange={e => setAttendanceSelectedDate(e.target.value)} 
+                            style={{ padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.9rem', outline: 'none' }} 
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '22px' }}>
+                          <button style={{ padding: '8px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(37,99,235,0.2)' }}>SUBMIT</button>
+                          <button onClick={() => window.print()} style={{ padding: '8px 16px', background: '#f97316', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(249,115,22,0.2)' }}>PRINT</button>
+                          <button onClick={() => handleExportXLS(`Date_Wise_Attendance_${attendanceSelectedDate}`)} style={{ padding: '8px 16px', background: '#38bdf8', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(56,189,248,0.2)' }}>EXPORT AS XLS</button>
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const selDate = new Date(attendanceSelectedDate);
+                        const staffMap = new Map();
+                        staffList.forEach(s => staffMap.set((s.email || s.name || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, in: null, out: null }));
+
+                        // Add staff from staffUsersList if not present
+                        staffUsersList.forEach(s => {
+                          const key = (s.email || s.name || '').toLowerCase();
+                          if (key && !staffMap.has(key)) {
+                            staffMap.set(key, { sno: staffMap.size + 1, name: s.name, email: s.email, in: null, out: null });
+                          }
+                        });
+                        
+                        attendanceList.forEach(log => {
+                          if (!log.email) return;
+                          const emailKey = log.email.toLowerCase();
+                          if (!staffMap.has(emailKey)) {
+                            staffMap.set(emailKey, { sno: staffMap.size + 1, name: log.email.split('@')[0], email: log.email, in: null, out: null });
+                          }
+                          const date = new Date(log.login_time || log.loginTime);
+                          if (date.toDateString() === selDate.toDateString()) {
+                            staffMap.get(emailKey).in = new Date(log.login_time || log.loginTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            if (log.logout_time || log.logoutTime) {
+                              staffMap.get(emailKey).out = new Date(log.logout_time || log.logoutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            }
+                          }
+                        });
+
+                        const tableStaff = Array.from(staffMap.values()).sort((a, b) => a.sno - b.sno);
+                        const formattedDateStr = selDate.toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric'}).replace(/\//g, '-');
+
+                        return (
+                          <div style={{ overflowX: 'auto', border: '1px solid #94a3b8', background: 'white' }}>
+                            <table id="attendance-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.9rem' }}>
+                              <thead>
+                                <tr>
+                                  <th colSpan={5} style={{ padding: '10px', fontSize: '1.1rem', fontWeight: 600, borderBottom: '1px solid #94a3b8', color: '#1e293b' }}>
+                                    Staff Attendance - {formattedDateStr}
+                                  </th>
+                                </tr>
+                                <tr style={{ borderBottom: '1px solid #94a3b8', background: '#f8fafc' }}>
+                                  <th style={{ padding: '10px', borderRight: '1px solid #94a3b8', width: '60px' }}>S.No</th>
+                                  <th style={{ padding: '10px', borderRight: '1px solid #94a3b8', textAlign: 'left' }}>Staff Name</th>
+                                  <th style={{ padding: '10px', borderRight: '1px solid #94a3b8' }}>IN</th>
+                                  <th style={{ padding: '10px', borderRight: '1px solid #94a3b8' }}>OUT</th>
+                                  <th style={{ padding: '10px' }}>Location</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {tableStaff.map((s, idx) => {
+                                  const isAbsent = !s.in;
+                                  return (
+                                    <tr key={s.email} style={{ borderBottom: '1px solid #94a3b8', background: isAbsent ? '#fef08a' : 'white' }}>
+                                      <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', color: '#334155' }}>{idx + 1}</td>
+                                      <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#334155' }}>{s.name}</td>
+                                      <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', color: '#6366f1' }}>{s.in || ''}</td>
+                                      <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', color: '#6366f1' }}>{s.out || ''}</td>
+                                      <td style={{ padding: '10px', color: '#6366f1' }}>{isAbsent ? 'Absent' : 'In'}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {attendanceSubTab === 'staff_wise' && (() => {
+                    const allStaffKeys = new Set<string>();
+                    const allStaffOptions: any[] = [];
                     
-                    const now = new Date();
-                    filtered = filtered.filter(log => {
-                      const logDate = new Date(log.login_time || log.loginTime);
-                      if (attendanceTimeFilter === 'daily') {
-                        return logDate.toDateString() === now.toDateString();
-                      } else if (attendanceTimeFilter === 'weekly') {
-                        if (attendanceFromDate && attendanceToDate) {
-                          const from = new Date(attendanceFromDate);
-                          const to = new Date(attendanceToDate);
-                          to.setHours(23, 59, 59, 999);
-                          return logDate >= from && logDate <= to;
-                        }
-                        const diff = now.getTime() - logDate.getTime();
-                        return diff <= 7 * 24 * 60 * 60 * 1000;
-                      } else if (attendanceTimeFilter === 'monthly') {
-                        if (attendanceMonth) {
-                          return logDate.getMonth() === parseInt(attendanceMonth) && (attendanceYear ? logDate.getFullYear() === parseInt(attendanceYear) : logDate.getFullYear() === now.getFullYear());
-                        }
-                        return logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
-                      } else if (attendanceTimeFilter === 'yearly') {
-                        if (attendanceYear) {
-                          return logDate.getFullYear() === parseInt(attendanceYear);
-                        }
-                        return logDate.getFullYear() === now.getFullYear();
+                    staffList.forEach(s => {
+                      const key = (s.email || s.name || '').toLowerCase();
+                      if (key && !allStaffKeys.has(key)) {
+                        allStaffKeys.add(key);
+                        allStaffOptions.push({ ...s, filterKey: key });
                       }
-                      return true;
+                    });
+                    
+                    staffUsersList.forEach(s => {
+                      const key = (s.email || s.name || '').toLowerCase();
+                      if (key && !allStaffKeys.has(key)) {
+                        allStaffKeys.add(key);
+                        allStaffOptions.push({ ...s, filterKey: key });
+                      }
+                    });
+                    
+                    attendanceList.forEach(log => {
+                      if (log.email && !allStaffKeys.has(log.email.toLowerCase())) {
+                        allStaffKeys.add(log.email.toLowerCase());
+                        allStaffOptions.push({ email: log.email, name: log.email.split('@')[0], filterKey: log.email.toLowerCase() });
+                      }
                     });
 
-                    if (filtered.length === 0) {
-                      return (
-                        <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#64748b' }}>
-                          <Clock size={36} style={{ display: 'block', margin: '0 auto 10px', opacity: 0.5 }} />
-                          <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>No attendance logs found for selected filters.</p>
-
-  
-                        </div>
-                      );
-                    }
-
                     return (
-                      <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
-                          <thead>
-                            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                              <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Staff Name</th>
-                              <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Date</th>
-                              <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Check-In Time</th>
-                              <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Check-Out Time</th>
-                              <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filtered.map((log) => {
-                              const dateStr = formatDateDDMMYYYY(log.login_time || log.loginTime);
-                              const inTime = new Date(log.login_time || log.loginTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                              const outTime = (log.logout_time || log.logoutTime) 
-                                ? new Date(log.logout_time || log.logoutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                : '—';
-                              const isCompleted = !!(log.logout_time || log.logoutTime);
-                              
-                              let rawStaffName = staffUsersList.find((s: any) => s.email === log.email)?.name 
-                                           || staffList.find((s: any) => s.email === log.email)?.name
-                                           || log.email.split('@')[0];
-                                           
-                              const staffName = rawStaffName.charAt(0).toUpperCase() + rawStaffName.slice(1);
+                      <div style={{ flex: 1, overflowY: 'auto', padding: '0 10px 20px 10px' }}>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1e293b', marginBottom: '4px' }}>Staff Member:</label>
+                            <select 
+                              value={attendanceStaffFilter} 
+                              onChange={(e) => setAttendanceStaffFilter(e.target.value)}
+                              style={{ padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.9rem', outline: 'none', background: 'white' }}
+                            >
+                              <option value="all">-- Select Staff --</option>
+                              {allStaffOptions.map(s => <option key={s.filterKey} value={s.filterKey}>{s.name}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#1e293b', marginBottom: '4px' }}>Month:</label>
+                            <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden' }}>
+                              <select value={attendanceMonth} onChange={e => setAttendanceMonth(e.target.value)} style={{ padding: '8px 10px', border: 'none', fontSize: '0.9rem', outline: 'none', background: 'white' }}>
+                                {Array.from({length: 12}).map((_, i) => <option key={i} value={i}>{new Date(0, i).toLocaleString('en', {month:'long'})}</option>)}
+                              </select>
+                              <span style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'white', borderLeft: '1px solid #cbd5e1' }}>,</span>
+                              <select value={attendanceYear} onChange={e => setAttendanceYear(e.target.value)} style={{ padding: '8px 10px', border: 'none', fontSize: '0.9rem', outline: 'none', background: 'white' }}>
+                                {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '22px' }}>
+                            <button style={{ padding: '8px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(37,99,235,0.2)' }}>SUBMIT</button>
+                            <button onClick={() => window.print()} style={{ padding: '8px 16px', background: '#f97316', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(249,115,22,0.2)' }}>PRINT</button>
+                            <button onClick={() => handleExportXLS(`Staff_Wise_Attendance_${attendanceMonth}_${attendanceYear}`)} style={{ padding: '8px 16px', background: '#38bdf8', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(56,189,248,0.2)' }}>EXPORT AS XLS</button>
+                          </div>
+                        </div>
 
-                              return (
-                                <tr key={log.id}>
-                                  <td style={{ padding: '14px 16px', fontWeight: 700, color: '#334155' }}>
-                                    {staffName} <span style={{fontSize: '0.7rem', color: '#94a3b8', display: 'block', fontWeight: 400}}>{log.email}</span>
-                                  </td>
-                                  <td style={{ padding: '14px 16px', color: '#475569' }}>{dateStr}</td>
-                                  <td style={{ padding: '14px 16px', color: '#2A9D8F', fontWeight: 600 }}>{inTime}</td>
-                                  <td style={{ padding: '14px 16px', color: isCompleted ? '#ef4444' : '#64748b', fontWeight: 600 }}>{outTime}</td>
-                                  <td style={{ padding: '14px 16px' }}>
-                                    <span style={{
-                                      background: isCompleted ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-                                      color: isCompleted ? '#10b981' : '#f59e0b',
-                                      padding: '3px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700
-                                    }}>
-                                      {isCompleted ? 'Completed' : 'On Duty'}
-                                    </span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                        {(() => {
+                          if (attendanceStaffFilter === 'all') {
+                            return <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Please select a staff member to view their report.</div>;
+                          }
+
+                          const selectedStaff = allStaffOptions.find(s => s.filterKey === attendanceStaffFilter) || { name: attendanceStaffFilter };
+                          const m = parseInt(attendanceMonth);
+                          const y = parseInt(attendanceYear);
+                          const daysInMonth = new Date(y, m + 1, 0).getDate();
+                          const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
+
+                          // Pre-process attendance data
+                          const staffLogs = new Map();
+                          
+                          attendanceList.forEach(log => {
+                            // Match either email or name against the filterKey
+                            const logKey = (log.email || log.name || '').toLowerCase();
+                            if (logKey && logKey === attendanceStaffFilter) {
+                              const date = new Date(log.login_time || log.loginTime);
+                              if (date.getMonth() === m && date.getFullYear() === y) {
+                                const d = date.getDate();
+                                if (!staffLogs.has(d)) {
+                                  staffLogs.set(d, { in: log.login_time || log.loginTime, out: log.logout_time || log.logoutTime });
+                                } else {
+                                  const current = staffLogs.get(d);
+                                  if (new Date(log.login_time || log.loginTime) < new Date(current.in)) {
+                                    current.in = log.login_time || log.loginTime;
+                                  }
+                                  if (log.logout_time || log.logoutTime) {
+                                    if (!current.out || new Date(log.logout_time || log.logoutTime) > new Date(current.out)) {
+                                      current.out = log.logout_time || log.logoutTime;
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          });
+
+                          return (
+                            <div style={{ overflowX: 'auto', border: '1px solid #94a3b8', background: 'white' }}>
+                              <table id="attendance-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.9rem' }}>
+                                <thead>
+                                  <tr>
+                                    <th colSpan={5} style={{ padding: '10px', fontSize: '1.1rem', fontWeight: 600, borderBottom: '1px solid #94a3b8', color: '#1e293b' }}>
+                                      Attendance Report - {selectedStaff.name} ({new Date(y, m).toLocaleString('en', {month:'long'})} {y})
+                                    </th>
+                                  </tr>
+                                  <tr style={{ borderBottom: '1px solid #94a3b8', background: '#f8fafc' }}>
+                                    <th style={{ padding: '10px', borderRight: '1px solid #94a3b8', width: '80px' }}>Date</th>
+                                    <th style={{ padding: '10px', borderRight: '1px solid #94a3b8' }}>Day</th>
+                                    <th style={{ padding: '10px', borderRight: '1px solid #94a3b8' }}>Check-In</th>
+                                    <th style={{ padding: '10px', borderRight: '1px solid #94a3b8' }}>Check-Out</th>
+                                    <th style={{ padding: '10px' }}>Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {days.map(d => {
+                                    const dateObj = new Date(y, m, d);
+                                    const dateStr = dateObj.toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric'}).replace(/\//g, '-');
+                                    const dayName = dateObj.toLocaleDateString('en-US', {weekday: 'short'});
+                                    const isSunday = dateObj.getDay() === 0;
+                                    const log = staffLogs.get(d);
+                                    
+                                    let inTime = '';
+                                    let outTime = '';
+                                    let status = isSunday ? 'Sunday' : 'Absent';
+                                    let statusColor = isSunday ? '#eab308' : '#ef4444';
+                                    let rowBg = (isSunday || !log) ? '#fef08a' : 'white';
+
+                                    if (log) {
+                                      inTime = new Date(log.in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                      if (log.out) {
+                                        outTime = new Date(log.out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                      }
+                                      status = 'Present';
+                                      statusColor = '#22c55e';
+                                      rowBg = 'white';
+                                    }
+
+                                    return (
+                                      <tr key={d} style={{ borderBottom: '1px solid #94a3b8', background: rowBg }}>
+                                        <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', color: '#334155', fontWeight: 600 }}>{dateStr}</td>
+                                        <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', color: '#64748b' }}>{dayName}</td>
+                                        <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', color: '#6366f1' }}>{inTime}</td>
+                                        <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', color: '#6366f1' }}>{outTime}</td>
+                                        <td style={{ padding: '10px', color: statusColor, fontWeight: 700 }}>{status}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
-                  })()}
+                  })}
                 </div>
               )}
+
 
               {/* ─── SEA MEMBERS TAB ─── */}
               {activeTab === 'sea_members' && (
@@ -3272,9 +3512,16 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
 
   const submitted = surveys;
 
-  // Extract unique staff names from the surveys
+  // Extract unique staff names from the surveys and local storage
+  const localStaff = localStorage.getItem('care_portal_staff');
+  const allStaffData = localStaff ? JSON.parse(localStaff) : INITIAL_STAFF_DETAILS;
+  const allStaffNames = allStaffData.map((s: any) => s.name);
+  
   const uniqueStaff = Array.from(
-    new Set(submitted.map(s => s.household.staff_name).filter(Boolean))
+    new Set([
+      ...allStaffNames,
+      ...submitted.map(s => s.household.staff_name).filter(Boolean)
+    ])
   ).sort() as string[];
 
   // Reset page to 1 when filters change
@@ -3707,44 +3954,34 @@ function OverviewTab({ stats, loading, onExport, surveys, exporting }: { stats: 
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [staffModalInitialTab, setStaffModalInitialTab] = useState<'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services' | 'sea_members'>('staff');
-  const [staffCount, setStaffCount] = useState(9);
-  const [activeAttendanceToday, setActiveAttendanceToday] = useState(0);
-  const [collectivesCount, setCollectivesCount] = useState(4);
-  const [totalMeetings, setTotalMeetings] = useState(13);
-  const [totalParticipants, setTotalParticipants] = useState(156);
-  const [seaMembersCount, setSeaMembersCount] = useState(1);
   
-  useEffect(() => {
-    // Load staff count
-    const localStaff = localStorage.getItem('care_portal_staff');
-    const sList = localStaff ? JSON.parse(localStaff) : INITIAL_STAFF_DETAILS;
-    setStaffCount(sList.length);
-    
-    // Load attendance
-    const todayStr = new Date().toISOString().split('T')[0];
-    const localLogs = localStorage.getItem('care_attendance_logs');
-    if (localLogs) {
-      const logs = JSON.parse(localLogs);
-      const uniqueCheckedInToday = new Set(
-        logs
-          .filter((l: any) => l.loginTime && l.loginTime.startsWith(todayStr) && !l.logoutTime)
-          .map((l: any) => l.email)
-      );
-      setActiveAttendanceToday(uniqueCheckedInToday.size);
-    }
-    
-    // Load collectives
-    const localCC = localStorage.getItem('care_portal_collectives');
-    const ccList = localCC ? JSON.parse(localCC) : INITIAL_COLLECTIVES;
-    setCollectivesCount(ccList.length);
-    setTotalMeetings(ccList.reduce((acc: number, curr: any) => acc + (parseInt(curr.meetings_conducted) || 0), 0));
-    setTotalParticipants(ccList.reduce((acc: number, curr: any) => acc + (parseInt(curr.participants_count) || 0), 0));
+  // Calculate dynamically during render so they update instantly when modal closes
+  const localStaff = localStorage.getItem('care_portal_staff');
+  const sList = localStaff ? JSON.parse(localStaff) : INITIAL_STAFF_DETAILS;
+  const staffCount = sList.length;
+  
+  const todayStr = new Date().toISOString().split('T')[0];
+  const localLogs = localStorage.getItem('care_attendance_logs');
+  let activeAttendanceToday = 0;
+  if (localLogs) {
+    const logs = JSON.parse(localLogs);
+    const uniqueCheckedInToday = new Set(
+      logs
+        .filter((l: any) => l.loginTime && l.loginTime.startsWith(todayStr) && !l.logoutTime)
+        .map((l: any) => l.email)
+    );
+    activeAttendanceToday = uniqueCheckedInToday.size;
+  }
+  
+  const localCC = localStorage.getItem('care_portal_collectives');
+  const ccList = localCC ? JSON.parse(localCC) : INITIAL_COLLECTIVES;
+  const collectivesCount = ccList.length;
+  const totalMeetings = ccList.reduce((acc: number, curr: any) => acc + (parseInt(curr.meetings_conducted) || 0), 0);
+  const totalParticipants = ccList.reduce((acc: number, curr: any) => acc + (parseInt(curr.participants_count) || 0), 0);
 
-    // Load SEA Members count
-    const localSeaMembers = localStorage.getItem('care_sea_members');
-    const seaList = localSeaMembers ? JSON.parse(localSeaMembers) : INITIAL_SEA_MEMBERS;
-    setSeaMembersCount(seaList.length);
-  }, []);
+  const localSeaMembers = localStorage.getItem('care_sea_members');
+  const seaList = localSeaMembers ? JSON.parse(localSeaMembers) : INITIAL_SEA_MEMBERS;
+  const seaMembersCount = seaList.length;
 
   if (loading || !stats) {
     return (
