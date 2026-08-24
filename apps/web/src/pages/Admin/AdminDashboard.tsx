@@ -2916,7 +2916,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                         })()}
                       </div>
                     );
-                  })}
+                  })()}
                 </div>
               )}
 
