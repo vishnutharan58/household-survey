@@ -651,11 +651,10 @@ function EditEventModal({ event, onClose, onSave }: EditEventModalProps) {
 interface EditStaffModalProps {
   staff: any | null;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: any, password?: string) => void;
 }
 
 function EditStaffModal({ staff, onClose, onSave }: EditStaffModalProps) {
-  // @ts-ignore
   const [password, setPassword] = useState('');
   const [sno, setSno] = useState(staff?.sno?.toString() || '');
   const [name, setName] = useState(staff?.name || '');
@@ -684,7 +683,7 @@ function EditStaffModal({ staff, onClose, onSave }: EditStaffModalProps) {
       joiningDate,
       workExperience,
       email
-    });
+    }, password);
   };
 
   return (
@@ -729,6 +728,12 @@ function EditStaffModal({ staff, onClose, onSave }: EditStaffModalProps) {
               <input type="email" placeholder="e.g. regin@gmail.com" value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} required />
             </div>
           </div>
+          {!staff && (
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Password (For Login)</label>
+              <input type="password" placeholder="Min 6 characters" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} required />
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Joining Date</label>
@@ -1759,7 +1764,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   };
 
   // CRUD actions for Staff
-  const handleSaveStaff = async (staffData: any) => {
+  const handleSaveStaff = async (staffData: any, password?: string) => {
     const isNew = !staffData.id;
     const finalId = staffData.id || 'staff-' + Date.now();
     const preparedData = { ...staffData, id: finalId };
@@ -1779,6 +1784,32 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
           work_experience: preparedData.workExperience
         };
         if (isNew) {
+          if (password) {
+            // Create User in Auth using secondary client to not log out Admin
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+            const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder_key';
+            const secClient = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+            const { error: authError } = await secClient.auth.signUp({
+              email: preparedData.email,
+              password: password,
+              options: {
+                data: { role: 'staff', name: preparedData.name }
+              }
+            });
+            if (authError) {
+              console.error("Auth creation error:", authError);
+              alert("Failed to create user login: " + authError.message);
+              throw authError;
+            }
+            
+            // Insert into staff_users
+            const { error: staffUserError } = await supabase.from('staff_users').insert([{ email: preparedData.email, name: preparedData.name }]);
+            if (staffUserError) {
+                console.error("Failed to insert into staff_users", staffUserError);
+                // Non-blocking but should be noted
+            }
+          }
           const { error } = await supabase.from('staff_details').insert([dbObj]);
           if (error) throw error;
         } else {
