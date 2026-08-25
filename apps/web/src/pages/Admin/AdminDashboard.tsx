@@ -2284,9 +2284,9 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                         <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                           <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Sl. No</th>
                           <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Programme / Activity</th>
-                          <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800, textAlign: 'center' }}>Programs (Planned/Achieved)</th>
-                          <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800, textAlign: 'center' }}>Participants (Planned/Achieved)</th>
-                          <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800 }}>Place & Date</th>
+                          <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800, textAlign: 'center' }}>Plan</th>
+                          <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800, textAlign: 'center' }}>Achieved</th>
+                          <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800, textAlign: 'center' }}>Achievement Percentage</th>
                           <th style={{ padding: '14px 16px', color: '#475569', fontWeight: 800, textAlign: 'right' }}>Actions</th>
                         </tr>
                       </thead>
@@ -2301,15 +2301,19 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                           >
                             <td style={{ padding: '14px 16px', fontWeight: 700, color: '#1B3A5C' }}>{e.sno}</td>
                             <td style={{ padding: '14px 16px', fontWeight: 600, color: '#334155', maxWidth: '280px' }}>{e.activity}</td>
-                            <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 700 }}>
-                              <span style={{ color: '#64748b' }}>{e.plannedPrograms}</span> / <span style={{ color: '#2A9D8F' }}>{e.achievedPrograms}</span>
+                            <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 700, color: '#64748b' }}>
+                              {e.plannedPrograms}
                             </td>
-                            <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 700 }}>
-                              <span style={{ color: '#64748b' }}>{e.plannedParticipants ?? '—'}</span> / <span style={{ color: '#2A9D8F' }}>{e.achievedParticipants ?? '—'}</span>
+                            <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 700, color: '#2A9D8F' }}>
+                              {e.achievedPrograms}
                             </td>
-                            <td style={{ padding: '14px 16px', color: '#475569' }}>
-                              <div>{e.place || '—'}</div>
-                              <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>{e.event_date || '—'}</div>
+                            <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 700, color: '#3b82f6' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                <div style={{ width: '60px', height: '6px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                                  <div style={{ width: `${Math.min(e.plannedPrograms ? Math.round((e.achievedPrograms / e.plannedPrograms) * 100) : 0, 100)}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: '4px' }} />
+                                </div>
+                                <span>{e.plannedPrograms ? Math.round((e.achievedPrograms / e.plannedPrograms) * 100) : 0}%</span>
+                              </div>
                             </td>
                             <td style={{ padding: '14px 16px', textAlign: 'right' }} onClick={event => event.stopPropagation()}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
