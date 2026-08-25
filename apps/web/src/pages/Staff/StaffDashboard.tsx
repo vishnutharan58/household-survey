@@ -1393,8 +1393,6 @@ export default function StaffDashboard() {
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Resource Person</label>
-                      
                       <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Staff Name</label>
                       <select required value={eventFormData.staff_name} onChange={e => setEventFormData({...eventFormData, staff_name: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'white' }}>
                         <option value="">-- Select Staff Member --</option>
