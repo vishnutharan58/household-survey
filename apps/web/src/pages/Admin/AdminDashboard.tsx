@@ -1579,6 +1579,8 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [ccMonthFilter, setCcMonthFilter] = useState<string>(`${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}`);
   const [ccYearFilter, setCcYearFilter] = useState<string>(new Date().getFullYear().toString());
   const [ccStaffFilter, setCcStaffFilter] = useState<string>('all');
+  const [isEditCcLogModalOpen, setIsEditCcLogModalOpen] = useState(false);
+  const [editingCcLog, setEditingCcLog] = useState<any>(null);
   const [attendanceList, setAttendanceList] = useState<any[]>([]);
   // @ts-ignore
   const [staffUsersList, setStaffUsersList] = useState<any[]>([]);
@@ -2005,6 +2007,37 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
       localStorage.setItem('care_portal_collectives', JSON.stringify(updated));
     }
     setIsEditCollectiveOpen(false);
+  };
+
+  
+  const handleDeleteCcLog = async (id: string, e: any) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this CC meeting log?")) return;
+    try {
+      const supabase = getSupabase() as any;
+      await supabase.from('cc_meetings_log').delete().eq('id', id);
+      await loadData();
+    } catch (err) {
+      console.error("Failed to delete cc log:", err);
+    }
+  };
+
+  const handleSaveCcLog = async () => {
+    try {
+      const supabase = getSupabase() as any;
+      await supabase.from('cc_meetings_log').update({
+        start_date: editingCcLog.start_date,
+        end_date: editingCcLog.end_date,
+        village: editingCcLog.village,
+        meeting_date: editingCcLog.meeting_date,
+        participants_added: editingCcLog.participants_added
+      }).eq('id', editingCcLog.id);
+      setIsEditCcLogModalOpen(false);
+      await loadData();
+    } catch(e) {
+      console.error(e);
+      alert('Error updating CC log');
+    }
   };
 
   const handleDeleteCollective = async (id: string) => {
@@ -2454,56 +2487,49 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <div>
                       <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B3A5C', margin: 0 }}>Community Collectives (CC)</h3>
-                      <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px', margin: 0 }}>Manage the active groups, meetings, and participant aggregates</p>
+                      <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px', margin: 0 }}>Manage the detailed logs of all CC meetings</p>
                     </div>
-                    <button
-                      onClick={() => { setEditingCollective(null); setIsEditCollectiveOpen(true); }}
-                      style={{
-                        background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', color: 'white', border: 'none',
-                        borderRadius: '8px', padding: '8px 16px', fontSize: '0.82rem', fontWeight: 700,
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-                        boxShadow: '0 4px 12px rgba(42,157,143,0.15)'
-                      }}
-                    >
-                      <PlusCircle size={16} />
-                      Add Collective
-                    </button>
+                    <button onClick={() => handleExportXLS('CC_Meeting_Logs')} style={{ padding: '8px 16px', background: '#38bdf8', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(56,189,248,0.2)' }}>EXPORT AS XLS</button>
                   </div>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-                    {collectivesList.map((c) => (
-                      <div key={c.id} style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <span style={{ fontSize: '0.7rem', background: '#cbd5e1', color: '#334155', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>SNo: {c.sno}</span>
-                            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>ID: {c.id}</span>
-                          </div>
-                          <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1B3A5C', margin: '0 0 10px' }}>{c.name}</h4>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', background: '#f8fafc', padding: '10px', borderRadius: '8px' }}>
-                            <div>
-                              <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Membership</span>
-                              <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e293b' }}>{c.membership_count || 0}</span>
-                            </div>
-                            <div>
-                              <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Meetings</span>
-                              <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e293b' }}>{c.meetings_conducted}</span>
-                            </div>
-                            <div>
-                              <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Participants</span>
-                              <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e293b' }}>{c.participants_count}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #f1f5f9', marginTop: '12px', paddingTop: '10px' }}>
-                          <button onClick={() => { setEditingCollective(c); setIsEditCollectiveOpen(true); }} style={{ background: 'none', border: 'none', color: '#2A9D8F', fontSize: '0.74rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                            <Edit size={12} /> Edit
-                          </button>
-                          <button onClick={() => handleDeleteCollective(c.id)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.74rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                            <Trash2 size={12} /> Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                  <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
+                    <div style={{ overflowX: 'auto', padding: '20px' }}>
+                      <table id="cc-meetings-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '2px solid #cbd5e1' }}>
+                            <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800 }}>S.No</th>
+                            <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800 }}>CC Meeting Date</th>
+                            <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800 }}>Start Date/Time</th>
+                            <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800 }}>End Date/Time</th>
+                            <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800 }}>Village</th>
+                            <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800 }}>Staff Name</th>
+                            <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800, textAlign: 'center' }}>Total Participants</th>
+                            <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800, textAlign: 'center' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ccMeetingsLog.length === 0 ? (
+                            <tr><td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>No meetings logged yet.</td></tr>
+                          ) : ccMeetingsLog.map((log, i) => (
+                            <tr key={log.id || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '12px 16px', fontWeight: 700, color: '#1B3A5C' }}>{i + 1}</td>
+                              <td style={{ padding: '12px 16px', fontWeight: 700, color: '#1B3A5C' }}>{log.meeting_date}</td>
+                              <td style={{ padding: '12px 16px', color: '#475569' }}>{log.start_date || '—'}</td>
+                              <td style={{ padding: '12px 16px', color: '#475569' }}>{log.end_date || '—'}</td>
+                              <td style={{ padding: '12px 16px', color: '#475569' }}>{log.village || log.collective_name}</td>
+                              <td style={{ padding: '12px 16px', color: '#475569' }}>{log.staff_email}</td>
+                              <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, color: '#2A9D8F' }}>{log.participants_added}</td>
+                              <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                  <button onClick={() => { setEditingCcLog(log); setIsEditCcLogModalOpen(true); }} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: '4px' }} title="Edit"><Edit size={16} /></button>
+                                  <button onClick={(e) => handleDeleteCcLog(log.id, e)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }} title="Delete"><Trash2 size={16} /></button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
@@ -4874,7 +4900,43 @@ export default function AdminDashboard() {
           {toastNotification.message}
         </div>
       )}
-    </div>
+    
+      {isEditCcLogModalOpen && editingCcLog && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }} onClick={() => setIsEditCcLogModalOpen(false)}>
+          <div style={{ background: 'white', borderRadius: '24px', padding: '32px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', position: 'relative' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1B3A5C', margin: '0 0 24px' }}>Edit CC Meeting Log</h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>Meeting Date</label>
+                <input type="date" value={editingCcLog.meeting_date || ''} onChange={e => setEditingCcLog({...editingCcLog, meeting_date: e.target.value})} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #cbd5e1', borderRadius: '8px', outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>Start Date/Time</label>
+                <input type="text" value={editingCcLog.start_date || ''} onChange={e => setEditingCcLog({...editingCcLog, start_date: e.target.value})} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #cbd5e1', borderRadius: '8px', outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>End Date/Time</label>
+                <input type="text" value={editingCcLog.end_date || ''} onChange={e => setEditingCcLog({...editingCcLog, end_date: e.target.value})} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #cbd5e1', borderRadius: '8px', outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>Village</label>
+                <input type="text" value={editingCcLog.village || ''} onChange={e => setEditingCcLog({...editingCcLog, village: e.target.value})} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #cbd5e1', borderRadius: '8px', outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>Participants</label>
+                <input type="number" value={editingCcLog.participants_added || 0} onChange={e => setEditingCcLog({...editingCcLog, participants_added: parseInt(e.target.value, 10)})} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #cbd5e1', borderRadius: '8px', outline: 'none' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
+              <button onClick={() => setIsEditCcLogModalOpen(false)} style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleSaveCcLog} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', color: 'white', fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+</div>
   );
 }
 
