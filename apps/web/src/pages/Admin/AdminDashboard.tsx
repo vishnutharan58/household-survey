@@ -1574,6 +1574,11 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [documentsList, setDocumentsList] = useState<any[]>([]);
   const [schemesList, setSchemesList] = useState<any[]>([]);
   const [collectivesList, setCollectivesList] = useState<any[]>([]);
+  const [ccMeetingsLog, setCcMeetingsLog] = useState<any[]>([]);
+  const [ccSubTab, setCcSubTab] = useState<'overview' | 'monthly' | 'staff_wise' | 'yearly'>('overview');
+  const [ccMonthFilter, setCcMonthFilter] = useState<string>(`${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}`);
+  const [ccYearFilter, setCcYearFilter] = useState<string>(new Date().getFullYear().toString());
+  const [ccStaffFilter, setCcStaffFilter] = useState<string>('all');
   const [attendanceList, setAttendanceList] = useState<any[]>([]);
   // @ts-ignore
   const [staffUsersList, setStaffUsersList] = useState<any[]>([]);
@@ -1630,6 +1635,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
       const { data: dbStaff } = await supabase.from('staff_details').select('*').order('sno', { ascending: true });
       const { data: dbStaffUsers } = await supabase.from('staff_users').select('*');
       const { data: dbCollectives } = await supabase.from('community_collectives').select('*').order('sno', { ascending: true });
+      const { data: dbCcLogs } = await supabase.from('cc_meetings_log').select('*').order('created_at', { ascending: false });
       const { data: dbDocs } = await supabase.from('documents_list').select('*').order('sno', { ascending: true });
       const { data: dbSchemes } = await supabase.from('schemes_list').select('*').order('sno', { ascending: true });
       const { data: dbAttendance } = await supabase.from('staff_attendance').select('*').order('login_time', { ascending: false });
@@ -1660,6 +1666,10 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
       if (dbCollectives && dbCollectives.length > 0) {
         setCollectivesList(dbCollectives);
         localStorage.setItem('care_portal_collectives', JSON.stringify(dbCollectives));
+      }
+      if (dbCcLogs && dbCcLogs.length > 0) {
+        setCcMeetingsLog(dbCcLogs);
+        localStorage.setItem('care_cc_meetings_log', JSON.stringify(dbCcLogs));
       }
 
       if (dbSeaMembers && dbSeaMembers.length > 0) {
@@ -1708,6 +1718,9 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
       
       const localCollectives = localStorage.getItem('care_portal_collectives');
       setCollectivesList(localCollectives ? JSON.parse(localCollectives) : INITIAL_COLLECTIVES);
+      
+      const localCcLogs = localStorage.getItem('care_cc_meetings_log');
+      setCcMeetingsLog(localCcLogs ? JSON.parse(localCcLogs) : []);
       
       const localDocs = localStorage.getItem('care_portal_documents_list');
       setDocumentsList(localDocs ? JSON.parse(localDocs) : INITIAL_DOCUMENTS_LIST);

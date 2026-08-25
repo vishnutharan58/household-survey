@@ -204,8 +204,21 @@ export default function StaffDashboard() {
       const { error } = await supabase.from('community_collectives').update({
         meetings_conducted: newMeetings,
         participants_count: newParticipants
-      }).eq('id', selectedCcId);
+      }).eq('id', cc.id);
+
       if (error) throw error;
+
+      // Log the meeting
+      const dateStr = new Date().toISOString().split('T')[0];
+      const { error: logError } = await supabase.from('cc_meetings_log').insert([{
+        collective_id: cc.id,
+        collective_name: cc.name,
+        staff_email: user?.email,
+        meeting_date: dateStr,
+        participants_added: participantsAdded
+      }]);
+
+      if (logError) throw logError;
       
       alert(`Successfully added to ${cc.name}`);
       setCcFormData({ meetings_conducted: '', participants_count: '' });
