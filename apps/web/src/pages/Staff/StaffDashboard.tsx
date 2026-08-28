@@ -29,7 +29,7 @@ export default function StaffDashboard() {
   const [ccList, setCcList] = useState<any[]>([]);
   const [loadingCc, setLoadingCc] = useState(false);
   const [selectedCcId, setSelectedCcId] = useState('');
-  const [ccFormData, setCcFormData] = useState({ participants_count: '', meeting_date: '', start_date: '', end_date: '', village: '' });
+  const [ccFormData, setCcFormData] = useState({ participants_count: '', start_date: '', end_date: '', village: '' });
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [eventsList, setEventsList] = useState<any[]>([]);
@@ -170,8 +170,10 @@ export default function StaffDashboard() {
         if (data.length > 0 && !selectedCcId) {
           setSelectedCcId(data[0].id);
           setCcFormData({
-            meetings_conducted: '',
-            participants_count: ''
+            participants_count: '',
+            start_date: '',
+            end_date: '',
+            village: ''
           });
         }
       }
@@ -221,7 +223,7 @@ export default function StaffDashboard() {
       if (logError) throw logError;
       
       alert(`Successfully added to ${cc.name}`);
-      setCcFormData({ participants_count: '', meeting_date: '', start_date: '', end_date: '', village: '' });
+      setCcFormData({ participants_count: '', start_date: '', end_date: '', village: '' });
       fetchCCs();
     } catch(e) {
       console.error(e);
@@ -1480,8 +1482,10 @@ export default function StaffDashboard() {
                         const cc = ccList.find(c => c.id === id);
                         if (cc) {
                           setCcFormData({
-                            meetings_conducted: '',
-                            participants_count: ''
+                            participants_count: '',
+                            start_date: '',
+                            end_date: '',
+                            village: ''
                           });
                         }
                       }}
