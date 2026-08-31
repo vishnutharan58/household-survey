@@ -3199,6 +3199,7 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
           </div>
         </div>
       )}
+      {editingAttendance && <EditAttendanceModal attendance={editingAttendance} onClose={() => setEditingAttendance(null)} onSave={handleSaveAttendance} />}
     </div>
   );
 }
@@ -5008,5 +5009,5 @@ export default function AdminDashboard() {
 </div>
   );
 }
-          {editingAttendance && <EditAttendanceModal attendance={editingAttendance} onClose={() => setEditingAttendance(null)} onSave={handleSaveAttendance} />}
+
 
