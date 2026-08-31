@@ -2668,7 +2668,7 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                               <select value={attendanceMonth} onChange={e => setAttendanceMonth(e.target.value)} style={{ padding: '8px 10px', border: 'none', fontSize: '0.9rem', outline: 'none', background: 'white' }}>
                                 {Array.from({length: 12}).map((_, i) => <option key={i} value={i}>{new Date(0, i).toLocaleString('en', {month:'long'})}</option>)}
                               </select>
-                              <span style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'white', borderLeft: '1px solid #cbd5e1' }}>,</span>
+                              <span style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'white', borderLeft: '1px solid #cbd5e1' }}></span>
                               <select value={attendanceYear} onChange={e => setAttendanceYear(e.target.value)} style={{ padding: '8px 10px', border: 'none', fontSize: '0.9rem', outline: 'none', background: 'white' }}>
                                 {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
                               </select>
@@ -2896,7 +2896,7 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                               <select value={attendanceMonth} onChange={e => setAttendanceMonth(e.target.value)} style={{ padding: '8px 10px', border: 'none', fontSize: '0.9rem', outline: 'none', background: 'white' }}>
                                 {Array.from({length: 12}).map((_, i) => <option key={i} value={i}>{new Date(0, i).toLocaleString('en', {month:'long'})}</option>)}
                               </select>
-                              <span style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'white', borderLeft: '1px solid #cbd5e1' }}>,</span>
+                              <span style={{ display: 'flex', alignItems: 'center', padding: '0 6px', background: 'white', borderLeft: '1px solid #cbd5e1' }}></span>
                               <select value={attendanceYear} onChange={e => setAttendanceYear(e.target.value)} style={{ padding: '8px 10px', border: 'none', fontSize: '0.9rem', outline: 'none', background: 'white' }}>
                                 {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
                               </select>
