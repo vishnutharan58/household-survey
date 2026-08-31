@@ -4075,7 +4075,7 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
 }
 
 // ─── Overview Tab ───────────────────────────────────────────────────
-function OverviewTab({ stats, loading, onExport, surveys, exporting, attendanceList }: { stats: any, loading: boolean, onExport: (type: "weekly" | "monthly" | "all") => void, surveys: DraftSurvey[], exporting: boolean, attendanceList?: any[] }) {
+function OverviewTab({ stats, loading, onExport, surveys, exporting }: { stats: any, loading: boolean, onExport: (type: "weekly" | "monthly" | "all") => void, surveys: DraftSurvey[], exporting: boolean }) {
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [staffModalInitialTab, setStaffModalInitialTab] = useState<'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services' | 'sea_members'>('staff');
@@ -4087,15 +4087,19 @@ function OverviewTab({ stats, loading, onExport, surveys, exporting, attendanceL
   
   const todayStr = new Date().toISOString().split('T')[0];
   let activeAttendanceToday = 0;
-  if (attendanceList && attendanceList.length > 0) {
-    const today = new Date().toISOString().split('T')[0];
-    const uniqueCheckedInToday = new Set();
-    attendanceList.forEach(log => {
-      if (log.staff_name === 'Regin Mary') return;
-      if (log.login_time && log.login_time.startsWith(today)) uniqueCheckedInToday.add(log.staff_id);
-    });
-    activeAttendanceToday = uniqueCheckedInToday.size;
-  }
+  try {
+    const localLogs = localStorage.getItem('care_attendance_logs');
+    if (localLogs) {
+      const logs = JSON.parse(localLogs);
+      const today = new Date().toISOString().split('T')[0];
+      const uniqueCheckedInToday = new Set();
+      logs.forEach((log: any) => {
+        if (log.staff_name === 'Regin Mary') return;
+        if (log.login_time && log.login_time.startsWith(today)) uniqueCheckedInToday.add(log.staff_id);
+      });
+      activeAttendanceToday = uniqueCheckedInToday.size;
+    }
+  } catch(e) {}
   
   const localCC = localStorage.getItem('care_portal_collectives');
   const ccList = localCC ? JSON.parse(localCC) : INITIAL_COLLECTIVES;
@@ -4986,7 +4990,7 @@ export default function AdminDashboard() {
 
       {/* Main content */}
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview'    && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} surveys={submittedSurveys} exporting={exporting} attendanceList={attendanceList} />}
+        {activeTab === 'overview'    && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} surveys={submittedSurveys} exporting={exporting} />}
         {activeTab === 'surveys'     && <SubmittedSurveysTab surveys={submittedSurveys} />}
         {activeTab === 'requests'    && <EditRequestsTab />}
         {activeTab === 'leaves'      && <LeaveRequestsTab />}
