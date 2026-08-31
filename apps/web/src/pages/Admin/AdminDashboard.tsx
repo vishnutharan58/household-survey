@@ -1582,7 +1582,13 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [ccStaffFilter, setCcStaffFilter] = useState<string>('all');
   const [isEditCcLogModalOpen, setIsEditCcLogModalOpen] = useState(false);
   const [editingCcLog, setEditingCcLog] = useState<any>(null);
-  const [attendanceList, setAttendanceList] = useState<any[]>([]);
+  const [editingAttendance, setEditingAttendance] = useState<any>(null);
+  const [holidays, setHolidays] = useState<string[]>([]);
+  const [newHoliday, setNewHoliday] = useState('');
+  const handleAddHoliday = () => { if (newHoliday && !holidays.includes(newHoliday)) setHolidays([...holidays, newHoliday]); setNewHoliday(''); };
+  const handleRemoveHoliday = (h: string) => setHolidays(holidays.filter(x => x !== h));
+  const handleSaveAttendance = async (data: any) => { setEditingAttendance(null); };
+const [attendanceList, setAttendanceList] = useState<any[]>([]);
   // @ts-ignore
   const [staffUsersList, setStaffUsersList] = useState<any[]>([]);
   const [attendanceStaffFilter, setAttendanceStaffFilter] = useState<string>('all');
@@ -2306,6 +2312,16 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
               {/* ─── EVENTS & ACHIEVEMENTS TAB ─── */}
               {activeTab === 'events' && (
                 <div>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
+                    <button onClick={() => setEventSubTab('summary')} style={{ padding: '8px 16px', background: eventSubTab === 'summary' ? '#e2e8f0' : 'transparent', border: '1px solid', borderColor: eventSubTab === 'summary' ? '#cbd5e1' : 'transparent', borderRadius: '8px', color: eventSubTab === 'summary' ? '#1B3A5C' : '#64748b', fontWeight: eventSubTab === 'summary' ? 800 : 600, cursor: 'pointer' }}>Event Summary</button>
+                    <button onClick={() => setEventSubTab('staff_wise')} style={{ padding: '8px 16px', background: eventSubTab === 'staff_wise' ? '#e2e8f0' : 'transparent', border: '1px solid', borderColor: eventSubTab === 'staff_wise' ? '#cbd5e1' : 'transparent', borderRadius: '8px', color: eventSubTab === 'staff_wise' ? '#1B3A5C' : '#64748b', fontWeight: eventSubTab === 'staff_wise' ? 800 : 600, cursor: 'pointer' }}>Staff-wise Event</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', alignItems: 'center', background: '#f8fafc', padding: '12px 16px', borderRadius: '8px' }}>
+                    <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Date Filter:</label>
+                    <input type="date" value={eventStartDate} onChange={e => setEventStartDate(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                    <span style={{ color: '#94a3b8' }}>to</span>
+                    <input type="date" value={eventEndDate} onChange={e => setEventEndDate(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                  </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <div>
                       <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B3A5C', margin: 0 }}>Project Events & Target Achievements</h3>
@@ -2338,7 +2354,11 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                         </tr>
                       </thead>
                       <tbody>
-                        {eventsList.map((e) => (
+                        {eventsList.filter(e => {
+                          if (eventStartDate && new Date(e.created_at) < new Date(eventStartDate)) return false;
+                          if (eventEndDate && new Date(e.created_at) > new Date(eventEndDate)) return false;
+                          return true;
+                        }).map((e) => (
                           <tr
                             key={e.id}
                             onClick={() => setDetailedEvent(e)}
@@ -2485,6 +2505,31 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
               {/* ─── COMMUNITY COLLECTIVES TAB ─── */}
               {activeTab === 'collectives' && (
                 <div>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
+                    <button onClick={() => setCcSubTab('month')} style={{ padding: '8px 16px', background: ccSubTab === 'month' ? '#e2e8f0' : 'transparent', border: '1px solid', borderColor: ccSubTab === 'month' ? '#cbd5e1' : 'transparent', borderRadius: '8px', color: ccSubTab === 'month' ? '#1B3A5C' : '#64748b', fontWeight: ccSubTab === 'month' ? 800 : 600, cursor: 'pointer' }}>Month-wise</button>
+                    <button onClick={() => setCcSubTab('year')} style={{ padding: '8px 16px', background: ccSubTab === 'year' ? '#e2e8f0' : 'transparent', border: '1px solid', borderColor: ccSubTab === 'year' ? '#cbd5e1' : 'transparent', borderRadius: '8px', color: ccSubTab === 'year' ? '#1B3A5C' : '#64748b', fontWeight: ccSubTab === 'year' ? 800 : 600, cursor: 'pointer' }}>Year-wise</button>
+                    <button onClick={() => setCcSubTab('staff')} style={{ padding: '8px 16px', background: ccSubTab === 'staff' ? '#e2e8f0' : 'transparent', border: '1px solid', borderColor: ccSubTab === 'staff' ? '#cbd5e1' : 'transparent', borderRadius: '8px', color: ccSubTab === 'staff' ? '#1B3A5C' : '#64748b', fontWeight: ccSubTab === 'staff' ? 800 : 600, cursor: 'pointer' }}>Staff-wise</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', alignItems: 'center' }}>
+                    {ccSubTab === 'month' && (
+                      <select value={ccMonthFilter} onChange={e => setCcMonthFilter(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                        <option value="">All Months</option>
+                        {Array.from({length:12}).map((_, i) => <option key={i} value={i+1}>{new Date(2000, i).toLocaleString('en', {month:'long'})}</option>)}
+                      </select>
+                    )}
+                    {(ccSubTab === 'month' || ccSubTab === 'year') && (
+                      <select value={ccYearFilter} onChange={e => setCcYearFilter(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                      </select>
+                    )}
+                    {ccSubTab === 'staff' && (
+                      <select value={ccStaffFilter} onChange={e => setCcStaffFilter(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                        <option value="all">All Staff</option>
+                        {staffList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <div>
                       <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B3A5C', margin: 0 }}>Community Collectives (CC)</h3>
@@ -2792,7 +2837,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                                       <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#334155' }}>{s.name}</td>
                                       <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', color: '#6366f1' }}>{s.in || ''}</td>
                                       <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', color: '#6366f1' }}>{s.out || ''}</td>
-                                      <td style={{ padding: '10px', color: '#6366f1' }}>{isAbsent ? 'Absent' : 'In'}</td>
+                                      <td style={{ padding: '10px', color: '#6366f1' }}>{isAbsent ? 'Absent' : 'In'}</td><td style={{ padding: '10px' }}><button onClick={() => setEditingAttendance(s)} style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}>Edit</button></td>
                                     </tr>
                                   );
                                 })}
@@ -4029,7 +4074,7 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
 }
 
 // ─── Overview Tab ───────────────────────────────────────────────────
-function OverviewTab({ stats, loading, onExport, surveys, exporting }: { stats: any, loading: boolean, onExport: (type: 'weekly' | 'monthly' | 'all') => void, surveys: DraftSurvey[], exporting: boolean }) {
+function OverviewTab({ stats, loading, onExport, surveys, exporting, attendanceList }: { stats: any, loading: boolean, onExport: (type: "weekly" | "monthly" | "all") => void, surveys: DraftSurvey[], exporting: boolean, attendanceList?: any[] }) {
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [staffModalInitialTab, setStaffModalInitialTab] = useState<'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services' | 'sea_members'>('staff');
@@ -4040,15 +4085,14 @@ function OverviewTab({ stats, loading, onExport, surveys, exporting }: { stats: 
   const staffCount = sList.length;
   
   const todayStr = new Date().toISOString().split('T')[0];
-  const localLogs = localStorage.getItem('care_attendance_logs');
   let activeAttendanceToday = 0;
-  if (localLogs) {
-    const logs = JSON.parse(localLogs);
-    const uniqueCheckedInToday = new Set(
-      logs
-        .filter((l: any) => l.loginTime && l.loginTime.startsWith(todayStr) && !l.logoutTime)
-        .map((l: any) => l.email)
-    );
+  if (attendanceList && attendanceList.length > 0) {
+    const today = new Date().toISOString().split('T')[0];
+    const uniqueCheckedInToday = new Set();
+    attendanceList.forEach(log => {
+      if (log.staff_name === 'Regin Mary') return;
+      if (log.login_time && log.login_time.startsWith(today)) uniqueCheckedInToday.add(log.staff_id);
+    });
     activeAttendanceToday = uniqueCheckedInToday.size;
   }
   
@@ -4393,6 +4437,8 @@ function LeaveRequestsTab() {
   const { leaveRequests, approveLeaveRequest, rejectLeaveRequest, setLeaveRequests } = useLeaveRequestStore();
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [leaveMonth, setLeaveMonth] = useState<string>('all');
+  const [leaveYear, setLeaveYear] = useState<string>(String(new Date().getFullYear()));
 
   // Note Modal state
   const [modalAction, setModalAction] = useState<{ id: string; type: 'approve' | 'reject'; staffName: string } | null>(null);
@@ -4424,13 +4470,13 @@ function LeaveRequestsTab() {
   const filteredRequests = allRequests.filter(r => {
     const matchesStatus = filterStatus === 'all' || r.status === filterStatus;
     const q = searchQuery.toLowerCase();
-    const matchesSearch =
-      !searchQuery ||
-      r.staffEmail.toLowerCase().includes(q) ||
-      (r.staffName && r.staffName.toLowerCase().includes(q)) ||
-      r.leaveType.toLowerCase().includes(q) ||
-      r.reason.toLowerCase().includes(q);
-    return matchesStatus && matchesSearch;
+    const matchesSearch = !searchQuery || r.staffEmail.toLowerCase().includes(q) || (r.staffName && r.staffName.toLowerCase().includes(q)) || r.leaveType.toLowerCase().includes(q) || r.reason.toLowerCase().includes(q);
+    let matchesMonth = true;
+    if (leaveMonth !== 'all') {
+      const ld = new Date(r.startDate);
+      if (ld.getMonth() !== parseInt(leaveMonth) || ld.getFullYear() !== parseInt(leaveYear)) matchesMonth = false;
+    }
+    return matchesStatus && matchesSearch && matchesMonth;
   });
 
   const handleOpenActionModal = (id: string, type: 'approve' | 'reject', staffName: string) => {
@@ -4482,7 +4528,7 @@ function LeaveRequestsTab() {
           { label: 'Total Requests', count: allRequests.length, color: '#1B3A5C', bg: '#e2e8f0', icon: CalendarDays },
           { label: 'Pending Approvals', count: pendingCount, color: '#b45309', bg: '#fef3c7', icon: Clock, highlight: pendingCount > 0 },
           { label: 'Approved Leaves', count: approvedCount, color: '#065f46', bg: '#d1fae5', icon: CheckCheck },
-          { label: 'Declined Requests', count: rejectedCount, color: '#991b1b', bg: '#fee2e2', icon: XCircle },
+          { label: 'Declined', count: rejectedCount, color: '#991b1b', bg: '#fee2e2', icon: XCircle },
         ].map(({ label, count, color, bg, icon: Icon, highlight }) => (
           <div
             key={label}
@@ -4740,6 +4786,27 @@ function LeaveRequestsTab() {
 }
 
 // ─── Main Component ─────────────────────────────────────────────────
+
+function EditAttendanceModal({ attendance, onClose, onSave }: { attendance: any, onClose: () => void, onSave: (data: any) => void }) {
+  const [inTime, setInTime] = useState(attendance.in || '');
+  const [outTime, setOutTime] = useState(attendance.out || '');
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', padding: '20px' }}>
+      <div style={{ background: 'white', borderRadius: '24px', padding: '32px', width: '100%', maxWidth: '400px' }}>
+        <h3 style={{ margin: '0 0 20px', fontSize: '1.25rem', color: '#1B3A5C', fontWeight: 800 }}>Edit Attendance ({attendance.name})</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div><label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>In Time</label><input type="text" value={inTime} onChange={e => setInTime(e.target.value)} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #cbd5e1', borderRadius: '8px' }} /></div>
+          <div><label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>Out Time</label><input type="text" value={outTime} onChange={e => setOutTime(e.target.value)} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #cbd5e1', borderRadius: '8px' }} /></div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
+          <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={() => onSave({ ...attendance, in: inTime, out: outTime })} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#1B3A5C', color: 'white', fontWeight: 600, cursor: 'pointer' }}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { user, signOut } = useAuthStore();
   const { drafts } = useDraftStore();
@@ -4918,7 +4985,7 @@ export default function AdminDashboard() {
 
       {/* Main content */}
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview'    && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} surveys={submittedSurveys} exporting={exporting} />}
+        {activeTab === 'overview'    && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} surveys={submittedSurveys} exporting={exporting} attendanceList={attendanceList} />}
         {activeTab === 'surveys'     && <SubmittedSurveysTab surveys={submittedSurveys} />}
         {activeTab === 'requests'    && <EditRequestsTab />}
         {activeTab === 'leaves'      && <LeaveRequestsTab />}
@@ -4941,4 +5008,5 @@ export default function AdminDashboard() {
 </div>
   );
 }
+          {editingAttendance && <EditAttendanceModal attendance={editingAttendance} onClose={() => setEditingAttendance(null)} onSave={handleSaveAttendance} />}
 

@@ -1004,7 +1004,7 @@ export default function StaffDashboard() {
                         Household: {draft.household.household_number || 'Unnamed'}
                       </p>
                       <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '3px 0 0' }}>
-                        Last saved: {new Date(draft.lastSavedAt).toLocaleString()}
+                        Last saved: {formatDateDDMMYYYY(draft.lastSavedAt)}
                       </p>
                     </div>
                     <span className={`badge ${draft.status === 'pending_sync' ? 'badge-sync' : 'badge-draft'}`}>
@@ -1069,7 +1069,7 @@ export default function StaffDashboard() {
                             Household: {draft.household.household_number || 'Unnamed'}
                           </p>
                           <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '3px 0 0' }}>
-                            Submitted: {new Date(draft.lastSavedAt).toLocaleString()}
+                            Submitted: {formatDateDDMMYYYY(draft.lastSavedAt)}
                           </p>
                         </div>
                         <span className="badge badge-synced">✓ Synced</span>
@@ -1205,7 +1205,7 @@ export default function StaffDashboard() {
 
                     <div style={{ fontSize: '0.8rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                       <Calendar size={14} color="#64748b" />
-                      <span>{req.startDate} to {req.endDate}</span>
+                      <span>{formatDateDDMMYYYY(req.startDate)} to {formatDateDDMMYYYY(req.endDate)}</span>
                     </div>
 
                     <p style={{ fontSize: '0.82rem', color: '#334155', margin: 0, background: 'white', padding: '10px', borderRadius: '8px', border: '1px solid #f1f5f9', fontStyle: 'italic' }}>
