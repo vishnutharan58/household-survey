@@ -1637,6 +1637,9 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
   const [isEditEventOpen, setIsEditEventOpen] = useState(false);
   const [detailedEvent, setDetailedEvent] = useState<any | null>(null);
+  const [eventSubTab, setEventSubTab] = useState<'summary' | 'staff_wise'>('summary');
+  const [eventStartDate, setEventStartDate] = useState<string>('');
+  const [eventEndDate, setEventEndDate] = useState<string>('');
   
   const [editingStaff, setEditingStaff] = useState<any | null>(null);
   const [isEditStaffOpen, setIsEditStaffOpen] = useState(false);
@@ -2341,6 +2344,8 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                     <button onClick={() => setEventSubTab('summary')} style={{ padding: '8px 16px', background: eventSubTab === 'summary' ? '#e2e8f0' : 'transparent', border: '1px solid', borderColor: eventSubTab === 'summary' ? '#cbd5e1' : 'transparent', borderRadius: '8px', color: eventSubTab === 'summary' ? '#1B3A5C' : '#64748b', fontWeight: eventSubTab === 'summary' ? 800 : 600, cursor: 'pointer' }}>Event Summary</button>
                     <button onClick={() => setEventSubTab('staff_wise')} style={{ padding: '8px 16px', background: eventSubTab === 'staff_wise' ? '#e2e8f0' : 'transparent', border: '1px solid', borderColor: eventSubTab === 'staff_wise' ? '#cbd5e1' : 'transparent', borderRadius: '8px', color: eventSubTab === 'staff_wise' ? '#1B3A5C' : '#64748b', fontWeight: eventSubTab === 'staff_wise' ? 800 : 600, cursor: 'pointer' }}>Staff-wise Event</button>
                   </div>
+                  {eventSubTab === 'summary' && (
+                  <div>
                   <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', alignItems: 'center', background: '#f8fafc', padding: '12px 16px', borderRadius: '8px' }}>
                     <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Date Filter:</label>
                     <input type="date" value={eventStartDate} onChange={e => setEventStartDate(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
@@ -2430,6 +2435,106 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                       </tbody>
                     </table>
                   </div>
+                  </div>
+                  )}
+
+                  {/* ─── STAFF-WISE EVENT SUB-TAB ─── */}
+                  {eventSubTab === 'staff_wise' && (
+                  <div>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B3A5C', margin: '0 0 16px' }}>Staff-wise Event Summary</h3>
+                    <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0 0 20px' }}>Events grouped by responsible staff member / resource person</p>
+
+                    {(() => {
+                      const staffMap: Record<string, any[]> = {};
+                      eventsList.forEach((ev: any) => {
+                        const rp = ev.resource_person || 'Unassigned';
+                        if (!staffMap[rp]) staffMap[rp] = [];
+                        staffMap[rp].push(ev);
+                      });
+                      const staffNames = Object.keys(staffMap).sort();
+
+                      if (staffNames.length === 0) {
+                        return <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>No events found.</p>;
+                      }
+
+                      return staffNames.map(staffName => {
+                        const events = staffMap[staffName];
+                        const totalPlanned = events.reduce((s: number, e: any) => s + (e.plannedPrograms || 0), 0);
+                        const totalAchieved = events.reduce((s: number, e: any) => s + (e.achievedPrograms || 0), 0);
+                        const overallPct = totalPlanned > 0 ? Math.round((totalAchieved / totalPlanned) * 100) : 0;
+
+                        return (
+                          <div key={staffName} style={{ marginBottom: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                            <div style={{ background: 'linear-gradient(135deg, #1B3A5C, #2A9D8F)', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <User2 size={18} color="white" />
+                                </div>
+                                <div>
+                                  <h4 style={{ margin: 0, color: 'white', fontSize: '0.95rem', fontWeight: 800 }}>{staffName}</h4>
+                                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.72rem' }}>{events.length} event{events.length !== 1 ? 's' : ''} assigned</span>
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ textAlign: 'right' }}>
+                                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem', display: 'block' }}>Overall Achievement</span>
+                                  <span style={{ color: 'white', fontWeight: 800, fontSize: '1.1rem' }}>{overallPct}%</span>
+                                </div>
+                                <div style={{ width: '60px', height: '6px', background: 'rgba(255,255,255,0.2)', borderRadius: '4px', overflow: 'hidden' }}>
+                                  <div style={{ width: `${Math.min(overallPct, 100)}%`, height: '100%', background: 'white', borderRadius: '4px' }} />
+                                </div>
+                              </div>
+                            </div>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                              <thead>
+                                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Sl. No</th>
+                                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Programme / Activity</th>
+                                  <th style={{ padding: '10px 16px', textAlign: 'center', color: '#475569', fontWeight: 700 }}>Plan</th>
+                                  <th style={{ padding: '10px 16px', textAlign: 'center', color: '#475569', fontWeight: 700 }}>Achieved</th>
+                                  <th style={{ padding: '10px 16px', textAlign: 'center', color: '#475569', fontWeight: 700 }}>Achievement %</th>
+                                  <th style={{ padding: '10px 16px', textAlign: 'center', color: '#475569', fontWeight: 700 }}>Date</th>
+                                  <th style={{ padding: '10px 16px', textAlign: 'center', color: '#475569', fontWeight: 700 }}>Place</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {events.map((ev: any) => {
+                                  const pct = ev.plannedPrograms ? Math.round((ev.achievedPrograms / ev.plannedPrograms) * 100) : 0;
+                                  return (
+                                    <tr key={ev.id} style={{ borderBottom: '1px solid #f1f5f9' }} onMouseOver={el => (el.currentTarget.style.background = '#f8fafc')} onMouseOut={el => (el.currentTarget.style.background = 'none')}>
+                                      <td style={{ padding: '10px 16px', fontWeight: 700, color: '#1B3A5C' }}>{ev.sno}</td>
+                                      <td style={{ padding: '10px 16px', fontWeight: 600, color: '#334155', maxWidth: '250px' }}>{ev.activity}</td>
+                                      <td style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 700, color: '#64748b' }}>{ev.plannedPrograms}</td>
+                                      <td style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 700, color: '#2A9D8F' }}>{ev.achievedPrograms}</td>
+                                      <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                          <div style={{ width: '50px', height: '5px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                                            <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444', borderRadius: '4px' }} />
+                                          </div>
+                                          <span style={{ fontWeight: 700, color: pct >= 80 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626', fontSize: '0.78rem' }}>{pct}%</span>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '10px 16px', textAlign: 'center', color: '#64748b', fontSize: '0.78rem' }}>{ev.event_date ? new Date(ev.event_date).toLocaleDateString('en-GB') : '—'}</td>
+                                      <td style={{ padding: '10px 16px', textAlign: 'center', color: '#64748b', fontSize: '0.78rem' }}>{ev.place || '—'}</td>
+                                    </tr>
+                                  );
+                                })}
+                                <tr style={{ background: '#f1f5f9', fontWeight: 800 }}>
+                                  <td style={{ padding: '10px 16px' }} colSpan={2}>Total</td>
+                                  <td style={{ padding: '10px 16px', textAlign: 'center', color: '#475569' }}>{totalPlanned}</td>
+                                  <td style={{ padding: '10px 16px', textAlign: 'center', color: '#2A9D8F' }}>{totalAchieved}</td>
+                                  <td style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 800, color: '#3b82f6' }}>{overallPct}%</td>
+                                  <td colSpan={2}></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                  )}
+
                 </div>
               )}
 
