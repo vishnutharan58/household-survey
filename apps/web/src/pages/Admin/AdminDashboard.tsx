@@ -5273,7 +5273,7 @@ export default function AdminDashboard() {
 
       {/* Main content */}
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview'    && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} surveys={submittedSurveys} exporting={exporting} attendanceLogs={attendanceList} />}
+        {activeTab === 'overview'    && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} surveys={submittedSurveys} exporting={exporting} attendanceLogs={[]} />}
         {activeTab === 'surveys'     && <SubmittedSurveysTab surveys={submittedSurveys} />}
         {activeTab === 'requests'    && <EditRequestsTab />}
         {activeTab === 'leaves'      && <LeaveRequestsTab />}
