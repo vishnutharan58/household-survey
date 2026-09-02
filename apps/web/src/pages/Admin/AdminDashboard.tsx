@@ -1576,6 +1576,29 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [schemesList, setSchemesList] = useState<any[]>([]);
   const [collectivesList, setCollectivesList] = useState<any[]>([]);
   const [ccMeetingsLog, setCcMeetingsLog] = useState<any[]>([]);
+
+  const getFilteredCcMeetings = () => {
+    let filtered = ccMeetingsLog;
+    if (ccSubTab === 'month' || ccSubTab === 'year') {
+      if (ccYearFilter) {
+        filtered = filtered.filter(l => l.meeting_date && l.meeting_date.startsWith(ccYearFilter));
+      }
+      if (ccSubTab === 'month' && ccMonthFilter) {
+        const monthStr = ccMonthFilter.padStart(2, '0');
+        filtered = filtered.filter(l => l.meeting_date && l.meeting_date.includes('-' + monthStr + '-'));
+      }
+    } else if (ccSubTab === 'staff') {
+      if (ccStaffFilter && ccStaffFilter !== 'all') {
+        const staffObj = staffList.find(s => s.id === ccStaffFilter);
+        if (staffObj) {
+          filtered = filtered.filter(l => l.staff_email === staffObj.email);
+        }
+      }
+    }
+    return filtered;
+  };
+
+  const filteredCcMeetings = getFilteredCcMeetings();
   const [ccSubTab, setCcSubTab] = useState<'overview' | 'monthly' | 'staff_wise' | 'yearly'>('overview');
   const [ccMonthFilter, setCcMonthFilter] = useState<string>(`${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}`);
   const [ccYearFilter, setCcYearFilter] = useState<string>(new Date().getFullYear().toString());
@@ -2556,14 +2579,14 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                           </tr>
                         </thead>
                         <tbody>
-                          {ccMeetingsLog.length === 0 ? (
+                          {filteredCcMeetings.length === 0 ? (
                             <tr><td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>No meetings logged yet.</td></tr>
-                          ) : ccMeetingsLog.map((log, i) => (
+                          ) : filteredCcMeetings.map((log, i) => (
                             <tr key={log.id || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                               <td style={{ padding: '12px 16px', fontWeight: 700, color: '#1B3A5C' }}>{i + 1}</td>
-                              <td style={{ padding: '12px 16px', fontWeight: 700, color: '#1B3A5C' }}>{log.meeting_date}</td>
-                              <td style={{ padding: '12px 16px', color: '#475569' }}>{log.start_date || '—'}</td>
-                              <td style={{ padding: '12px 16px', color: '#475569' }}>{log.end_date || '—'}</td>
+                              <td style={{ padding: '12px 16px', fontWeight: 700, color: '#1B3A5C' }}>{formatDateDDMMYYYY(log.meeting_date)}</td>
+                              <td style={{ padding: '12px 16px', color: '#475569' }}>{log.start_date ? formatDateDDMMYYYY(log.start_date) : '—'}</td>
+                              <td style={{ padding: '12px 16px', color: '#475569' }}>{log.end_date ? formatDateDDMMYYYY(log.end_date) : '—'}</td>
                               <td style={{ padding: '12px 16px', color: '#475569' }}>{log.village || log.collective_name}</td>
                               <td style={{ padding: '12px 16px', color: '#475569' }}>{log.staff_email}</td>
                               <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, color: '#2A9D8F' }}>{log.participants_added}</td>
@@ -2694,7 +2717,7 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
 
                         // Pre-process attendance data
                         const staffMap = new Map();
-                        staffList.forEach(s => staffMap.set((s.email || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, logs: {} }));
+                        attendanceStaffList.forEach(s => staffMap.set((s.email || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, logs: {} }));
                         
                         // Add staff from staffUsersList if not present
                         staffUsersList.forEach(s => {
@@ -2784,6 +2807,10 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                     </div>
                   )}
 
+                  {(() => {
+                    const attendanceStaffList = staffList.filter(s => !(s.name || '').toLowerCase().includes('regin mary'));
+                    return (
+                      <>
                   {attendanceSubTab === 'date_wise' && (
                     <div style={{ flex: 1, overflowY: 'auto', padding: '0 10px 20px 10px' }}>
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px' }}>
@@ -2806,7 +2833,7 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                       {(() => {
                         const selDate = new Date(attendanceSelectedDate);
                         const staffMap = new Map();
-                        staffList.forEach(s => staffMap.set((s.email || s.name || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, in: null, out: null }));
+                        attendanceStaffList.forEach(s => staffMap.set((s.email || s.name || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, in: null, out: null }));
 
                         // Add staff from staffUsersList if not present
                         staffUsersList.forEach(s => {
@@ -2851,7 +2878,7 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                         });
 
                         const tableStaff = Array.from(staffMap.values()).filter((s: any) => s.name.toUpperCase().trim() !== 'REGIN MARY').sort((a, b) => a.sno - b.sno);
-                        const formattedDateStr = selDate.toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric'}).replace(/\//g, '-');
+                        const formattedDateStr = selDate.toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric'});
 
                         return (
                           <div style={{ overflowX: 'auto', border: '1px solid #94a3b8', background: 'white' }}>
@@ -2950,7 +2977,7 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                     const allStaffKeys = new Set<string>();
                     const allStaffOptions: any[] = [];
                     
-                    staffList.forEach(s => {
+                    attendanceStaffList.forEach(s => {
                       const key = (s.email || s.name || '').toLowerCase();
                       if (key && !allStaffKeys.has(key)) {
                         allStaffKeys.add(key);

@@ -217,7 +217,10 @@ export default function StaffDashboard() {
         collective_name: cc.name,
         staff_email: user?.email,
         meeting_date: dateStr,
-        participants_added: participantsAdded
+        participants_added: participantsAdded,
+        start_date: ccFormData.start_date || null,
+        end_date: ccFormData.end_date || null,
+        village: ccFormData.village || null
       }]);
 
       if (logError) throw logError;
@@ -1499,27 +1502,59 @@ export default function StaffDashboard() {
                   </div>
 
                   <div style={{ display: 'flex', gap: '16px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Membership Count</label>
-                      <input 
-                        type="text" 
-                        value={ccList.find(c => c.id === selectedCcId)?.membership_count || 0} 
-                        readOnly
-                        disabled
-                        style={{ padding: '12px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', outline: 'none', background: '#f1f5f9', color: '#64748b', cursor: 'not-allowed', fontWeight: 600 }}
-                      />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Start Time</label>
+                        <input type="datetime-local" value={ccFormData.start_date} onChange={e => setCcFormData({ ...ccFormData, start_date: e.target.value })} style={{ padding: '10px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>End Time</label>
+                        <input type="datetime-local" value={ccFormData.end_date} onChange={e => setCcFormData({ ...ccFormData, end_date: e.target.value })} style={{ padding: '10px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }} />
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Participants (Add)</label>
-                      <input 
-                        type="number" 
-                        placeholder="0"
-                        value={ccFormData.participants_count} 
-                        onChange={e => setCcFormData({ ...ccFormData, participants_count: e.target.value })}
-                        style={{ padding: '12px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', outline: 'none' }}
-                      />
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '16px', marginBottom: '16px' }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Village</label>
+                      <select
+                        value={ccFormData.village}
+                        onChange={e => setCcFormData({...ccFormData, village: e.target.value})}
+                        style={{ padding: '12px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', outline: 'none', background: 'white' }}
+                      >
+                        <option value="" disabled>Select Village</option>
+                        <option value="Pozhikarai">Pozhikarai</option>
+                        <option value="Arockiyapuram">Arockiyapuram</option>
+                        <option value="Manakudy">Manakudy</option>
+                        <option value="Rajakamangalam Thurai">Rajakamangalam Thurai</option>
+                        <option value="Kodimunai">Kodimunai</option>
+                        <option value="Puthenthurai">Puthenthurai</option>
+                        <option value="Kesavanputhenthurai">Kesavanputhenthurai</option>
+                        <option value="Pallam">Pallam</option>
+                        <option value="Keezha Manakudy">Keezha Manakudy</option>
+                      </select>
                     </div>
-                  </div>
+
+                    <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Membership Count</label>
+                        <input 
+                          type="text" 
+                          value={ccList.find(c => c.id === selectedCcId)?.membership_count || 0} 
+                          readOnly
+                          disabled
+                          style={{ padding: '12px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', outline: 'none', background: '#f1f5f9', color: '#64748b', cursor: 'not-allowed', fontWeight: 600 }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Participants (Add)</label>
+                        <input 
+                          type="number" 
+                          placeholder="0"
+                          value={ccFormData.participants_count} 
+                          onChange={e => setCcFormData({ ...ccFormData, participants_count: e.target.value })}
+                          style={{ padding: '12px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', outline: 'none' }}
+                        />
+                      </div>
+                    </div>
+
 
                   <button 
                     onClick={handleSaveCc} 
