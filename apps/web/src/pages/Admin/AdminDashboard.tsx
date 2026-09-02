@@ -1570,6 +1570,7 @@ function EditSeaMemberModal({ member, onClose, onSave }: EditSeaMemberModalProps
 function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => void, initialTab?: 'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services' | 'sea_members' }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   
+  // ─── ALL STATE DECLARATIONS FIRST ────────────────────────────
   const [eventsList, setEventsList] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
   const [documentsList, setDocumentsList] = useState<any[]>([]);
@@ -1580,7 +1581,45 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [ccMonthFilter, setCcMonthFilter] = useState<string>(`${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}`);
   const [ccYearFilter, setCcYearFilter] = useState<string>(new Date().getFullYear().toString());
   const [ccStaffFilter, setCcStaffFilter] = useState<string>('all');
+  const [isEditCcLogModalOpen, setIsEditCcLogModalOpen] = useState(false);
+  const [editingCcLog, setEditingCcLog] = useState<any>(null);
+  const [editingAttendance, setEditingAttendance] = useState<any>(null);
+  const [holidays, setHolidays] = useState<any[]>([]);
+  const [newHoliday, setNewHoliday] = useState('');
+  const [attendanceList, setAttendanceList] = useState<any[]>([]);
+  // @ts-ignore
+  const [staffUsersList, setStaffUsersList] = useState<any[]>([]);
+  const [attendanceStaffFilter, setAttendanceStaffFilter] = useState<string>('all');
+  const [attendanceSubTab, setAttendanceSubTab] = useState<'date_wise' | 'monthly' | 'staff_wise' | 'holidays'>('monthly');
+  const [attendanceSelectedDate, setAttendanceSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [attendanceMonth, setAttendanceMonth] = useState<string>(String(new Date().getMonth()));
+  const [attendanceYear, setAttendanceYear] = useState<string>(String(new Date().getFullYear()));
+  const [servicesList, setServicesList] = useState<any[]>([]);
+  const [seaMembersList, setSeaMembersList] = useState<any[]>([]);
+  const [selectedSeaMember, setSelectedSeaMember] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isUsingDb, setIsUsingDb] = useState(false);
+  // Modals
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
+  const [isEditEventOpen, setIsEditEventOpen] = useState(false);
+  const [detailedEvent, setDetailedEvent] = useState<any | null>(null);
+  const [eventSubTab, setEventSubTab] = useState<'summary' | 'staff_wise'>('summary');
+  const [eventStartDate, setEventStartDate] = useState<string>('');
+  const [eventEndDate, setEventEndDate] = useState<string>('');
+  const [editingStaff, setEditingStaff] = useState<any | null>(null);
+  const [isEditStaffOpen, setIsEditStaffOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<any | null>(null);
+  const [isEditDocOpen, setIsEditDocOpen] = useState(false);
+  const [editingScheme, setEditingScheme] = useState<any | null>(null);
+  const [isEditSchemeOpen, setIsEditSchemeOpen] = useState(false);
+  const [editingCollective, setEditingCollective] = useState<any | null>(null);
+  const [isEditCollectiveOpen, setIsEditCollectiveOpen] = useState(false);
+  const [editingService, setEditingService] = useState<any | null>(null);
+  const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
+  const [editingSeaMember, setEditingSeaMember] = useState<any | null>(null);
+  const [isEditSeaMemberOpen, setIsEditSeaMemberOpen] = useState(false);
 
+  // ─── HELPER FUNCTIONS (after all state) ──────────────────────
   const getFilteredCcMeetings = () => {
     let filtered = ccMeetingsLog;
     if (ccSubTab === 'month' || ccSubTab === 'year') {
@@ -1601,63 +1640,18 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
     }
     return filtered;
   };
-
   const filteredCcMeetings = getFilteredCcMeetings();
-  const [isEditCcLogModalOpen, setIsEditCcLogModalOpen] = useState(false);
-  const [editingCcLog, setEditingCcLog] = useState<any>(null);
-  const [editingAttendance, setEditingAttendance] = useState<any>(null);
-  const [holidays, setHolidays] = useState<any[]>([]);
-  const [newHoliday, setNewHoliday] = useState('');
+
   const handleAddHoliday = () => { if (newHoliday && !holidays.includes(newHoliday)) setHolidays([...holidays, newHoliday]); setNewHoliday(''); };
   const handleRemoveHoliday = (h: string) => setHolidays(holidays.filter(x => x !== h));
-  const handleSaveAttendance = async (data: any) => { setEditingAttendance(null); };
-const [attendanceList, setAttendanceList] = useState<any[]>([]);
-  // @ts-ignore
-  const [staffUsersList, setStaffUsersList] = useState<any[]>([]);
-  const [attendanceStaffFilter, setAttendanceStaffFilter] = useState<string>('all');
-  const [attendanceSubTab, setAttendanceSubTab] = useState<'date_wise' | 'monthly' | 'staff_wise' | 'holidays'>('monthly');
-  
+  const handleSaveAttendance = async (_data: any) => { setEditingAttendance(null); };
   const handleExportXLS = (filename: string) => {
     const table = document.getElementById('attendance-table');
     if (!table) return;
     const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet JS" });
     XLSX.writeFile(wb, filename + '.xlsx');
   };
-  const [attendanceSelectedDate, setAttendanceSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [attendanceMonth, setAttendanceMonth] = useState<string>(String(new Date().getMonth()));
-  const [attendanceYear, setAttendanceYear] = useState<string>(String(new Date().getFullYear()));
-  const [servicesList, setServicesList] = useState<any[]>([]);
-  const [seaMembersList, setSeaMembersList] = useState<any[]>([]);
-  const [selectedSeaMember, setSelectedSeaMember] = useState<any | null>(null);
   
-  const [loading, setLoading] = useState(true);
-  const [isUsingDb, setIsUsingDb] = useState(false);
-  
-  // Modals
-  const [editingEvent, setEditingEvent] = useState<any | null>(null);
-  const [isEditEventOpen, setIsEditEventOpen] = useState(false);
-  const [detailedEvent, setDetailedEvent] = useState<any | null>(null);
-  const [eventSubTab, setEventSubTab] = useState<'summary' | 'staff_wise'>('summary');
-  const [eventStartDate, setEventStartDate] = useState<string>('');
-  const [eventEndDate, setEventEndDate] = useState<string>('');
-  
-  const [editingStaff, setEditingStaff] = useState<any | null>(null);
-  const [isEditStaffOpen, setIsEditStaffOpen] = useState(false);
-  
-  const [editingDoc, setEditingDoc] = useState<any | null>(null);
-  const [isEditDocOpen, setIsEditDocOpen] = useState(false);
-  
-  const [editingScheme, setEditingScheme] = useState<any | null>(null);
-  const [isEditSchemeOpen, setIsEditSchemeOpen] = useState(false);
-  
-  const [editingCollective, setEditingCollective] = useState<any | null>(null);
-  const [isEditCollectiveOpen, setIsEditCollectiveOpen] = useState(false);
-
-  const [editingService, setEditingService] = useState<any | null>(null);
-  const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
-
-  const [editingSeaMember, setEditingSeaMember] = useState<any | null>(null);
-  const [isEditSeaMemberOpen, setIsEditSeaMemberOpen] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
