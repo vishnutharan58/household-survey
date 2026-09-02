@@ -2817,7 +2817,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
 
                         // Pre-process attendance data
                         const staffMap = new Map();
-                        attendanceStaffList.forEach(s => staffMap.set((s.email || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, logs: {} }));
+                        attendanceStaffList.forEach(s => staffMap.set((s.email || s.name || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, logs: {} }));
                         
                         // Add staff from staffUsersList if not present
                         staffUsersList.forEach(s => {
@@ -2879,7 +2879,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                               </thead>
                               <tbody>
                                 {tableStaff.map((s, idx) => (
-                                  <tr key={s.email} style={{ borderBottom: '1px solid #94a3b8' }}>
+                                  <tr key={idx} style={{ borderBottom: '1px solid #94a3b8' }}>
                                     <td style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', color: '#334155' }}>{idx + 1}</td>
                                     <td style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#64748b' }}>{s.name}</td>
                                     {days.map(d => {
@@ -3000,7 +3000,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                                 {tableStaff.map((s, idx) => {
                                   const isAbsent = !s.in;
                                   return (
-                                    <tr key={s.email} style={{ borderBottom: '1px solid #94a3b8', background: isAbsent ? '#fef08a' : 'white' }}>
+                                    <tr key={idx} style={{ borderBottom: '1px solid #94a3b8', background: isAbsent ? '#fef08a' : 'white' }}>
                                       <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', color: '#334155' }}>{idx + 1}</td>
                                       <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#334155' }}>{s.name}</td>
                                       <td style={{ padding: '10px', borderRight: '1px solid #94a3b8', color: '#6366f1' }}>{s.in || ''}</td>
