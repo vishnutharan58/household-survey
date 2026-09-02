@@ -2705,16 +2705,24 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                         attendanceList.forEach(log => {
                           if (!log.email && !log.staff_name) return;
                           
+                          const logEmail = (log.email || '').toLowerCase();
+                          const logNamePrefix = logEmail.split('@')[0];
+                          
                           let keyFound = null;
-                          if (log.email && staffMap.has(log.email.toLowerCase())) {
-                            keyFound = log.email.toLowerCase();
-                          } else if (log.staff_name) {
-                            const nameLower = log.staff_name.toLowerCase();
-                            const entry = Array.from(staffMap.entries()).find(([k, v]) => v.name.toLowerCase() === nameLower || v.name.toLowerCase().includes(nameLower) || nameLower.includes(v.name.toLowerCase()));
+                          if (logEmail && staffMap.has(logEmail)) {
+                            keyFound = logEmail;
+                          } else {
+                            const sName = (log.staff_name || '').toLowerCase();
+                            const entry = Array.from(staffMap.entries()).find(([k, v]) => {
+                              const vName = (v.name || '').toLowerCase();
+                              if (logNamePrefix && vName.includes(logNamePrefix)) return true;
+                              if (sName && (vName === sName || vName.includes(sName) || sName.includes(vName))) return true;
+                              return false;
+                            });
                             if (entry) keyFound = entry[0];
                           }
                           
-                          const finalKey = keyFound || (log.email ? log.email.toLowerCase() : (log.staff_name || '').toLowerCase());
+                          const finalKey = keyFound || logEmail || (log.staff_name || '').toLowerCase();
                           
                           if (!staffMap.has(finalKey)) {
                             staffMap.set(finalKey, { sno: staffMap.size + 1, name: log.staff_name || (log.email ? log.email.split('@')[0] : 'Unknown'), email: log.email || '', logs: {} });
@@ -2806,16 +2814,24 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                         attendanceList.forEach(log => {
                           if (!log.email && !log.staff_name) return;
                           
+                          const logEmail = (log.email || '').toLowerCase();
+                          const logNamePrefix = logEmail.split('@')[0];
+                          
                           let keyFound = null;
-                          if (log.email && staffMap.has(log.email.toLowerCase())) {
-                            keyFound = log.email.toLowerCase();
-                          } else if (log.staff_name) {
-                            const nameLower = log.staff_name.toLowerCase();
-                            const entry = Array.from(staffMap.entries()).find(([k, v]) => v.name.toLowerCase() === nameLower || v.name.toLowerCase().includes(nameLower) || nameLower.includes(v.name.toLowerCase()));
+                          if (logEmail && staffMap.has(logEmail)) {
+                            keyFound = logEmail;
+                          } else {
+                            const sName = (log.staff_name || '').toLowerCase();
+                            const entry = Array.from(staffMap.entries()).find(([k, v]) => {
+                              const vName = (v.name || '').toLowerCase();
+                              if (logNamePrefix && vName.includes(logNamePrefix)) return true;
+                              if (sName && (vName === sName || vName.includes(sName) || sName.includes(vName))) return true;
+                              return false;
+                            });
                             if (entry) keyFound = entry[0];
                           }
                           
-                          const finalKey = keyFound || (log.email ? log.email.toLowerCase() : (log.staff_name || '').toLowerCase());
+                          const finalKey = keyFound || logEmail || (log.staff_name || '').toLowerCase();
                           
                           if (!staffMap.has(finalKey)) {
                             staffMap.set(finalKey, { sno: staffMap.size + 1, name: log.staff_name || (log.email ? log.email.split('@')[0] : 'Unknown'), email: log.email || '', in: null, out: null });
@@ -2892,15 +2908,23 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                     
                     attendanceList.forEach(log => {
                       if (!log.email && !log.staff_name) return;
+                      const logEmail = (log.email || '').toLowerCase();
+                      const logNamePrefix = logEmail.split('@')[0];
+                      
                       let keyFound = null;
-                      if (log.email && allStaffKeys.has(log.email.toLowerCase())) {
-                         keyFound = log.email.toLowerCase();
-                      } else if (log.staff_name) {
-                         const nameLower = log.staff_name.toLowerCase();
-                         const entry = allStaffOptions.find(o => o.name.toLowerCase() === nameLower || o.name.toLowerCase().includes(nameLower) || nameLower.includes(o.name.toLowerCase()));
+                      if (logEmail && allStaffKeys.has(logEmail)) {
+                         keyFound = logEmail;
+                      } else {
+                         const sName = (log.staff_name || '').toLowerCase();
+                         const entry = allStaffOptions.find(o => {
+                           const oName = (o.name || '').toLowerCase();
+                           if (logNamePrefix && oName.includes(logNamePrefix)) return true;
+                           if (sName && (oName === sName || oName.includes(sName) || sName.includes(oName))) return true;
+                           return false;
+                         });
                          if (entry) keyFound = entry.filterKey;
                       }
-                      const finalKey = keyFound || (log.email ? log.email.toLowerCase() : (log.staff_name || '').toLowerCase());
+                      const finalKey = keyFound || logEmail || (log.staff_name || '').toLowerCase();
                       
                       if (!allStaffKeys.has(finalKey)) {
                         allStaffKeys.add(finalKey);
