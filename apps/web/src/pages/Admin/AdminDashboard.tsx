@@ -1641,6 +1641,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
     return filtered;
   };
   const filteredCcMeetings = getFilteredCcMeetings();
+  const attendanceStaffList = staffList.filter(s => !(s.name || '').toLowerCase().includes('regin mary'));
 
   const handleAddHoliday = () => { if (newHoliday && !holidays.includes(newHoliday)) setHolidays([...holidays, newHoliday]); setNewHoliday(''); };
   const handleRemoveHoliday = (h: string) => setHolidays(holidays.filter(x => x !== h));
@@ -2907,7 +2908,6 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                   )}
 
                   {(() => {
-                    const attendanceStaffList = staffList.filter(s => !(s.name || '').toLowerCase().includes('regin mary'));
                     return (
                       <>
                   {attendanceSubTab === 'date_wise' && (
