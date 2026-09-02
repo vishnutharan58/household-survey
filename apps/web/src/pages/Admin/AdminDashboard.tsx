@@ -1583,7 +1583,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [isEditCcLogModalOpen, setIsEditCcLogModalOpen] = useState(false);
   const [editingCcLog, setEditingCcLog] = useState<any>(null);
   const [editingAttendance, setEditingAttendance] = useState<any>(null);
-  const [holidays, setHolidays] = useState<string[]>([]);
+  const [holidays, setHolidays] = useState<any[]>([]);
   const [newHoliday, setNewHoliday] = useState('');
   const handleAddHoliday = () => { if (newHoliday && !holidays.includes(newHoliday)) setHolidays([...holidays, newHoliday]); setNewHoliday(''); };
   const handleRemoveHoliday = (h: string) => setHolidays(holidays.filter(x => x !== h));
@@ -1592,7 +1592,7 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
   // @ts-ignore
   const [staffUsersList, setStaffUsersList] = useState<any[]>([]);
   const [attendanceStaffFilter, setAttendanceStaffFilter] = useState<string>('all');
-  const [attendanceSubTab, setAttendanceSubTab] = useState<'date_wise' | 'monthly' | 'staff_wise' | 'manage'>('monthly');
+  const [attendanceSubTab, setAttendanceSubTab] = useState<'date_wise' | 'monthly' | 'staff_wise' | 'holidays'>('monthly');
   
   const handleExportXLS = (filename: string) => {
     const table = document.getElementById('attendance-table');
@@ -1650,6 +1650,8 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
       const { data: dbAttendance } = await supabase.from('staff_attendance').select('*').order('login_time', { ascending: false });
       const { data: dbServices } = await supabase.from('other_services_list').select('*').order('sno', { ascending: true });
       const { data: dbSeaMembers } = await supabase.from('sea_members_list').select('*');
+        const { data: dbHolidays } = await supabase.from('holidays').select('*');
+        if (dbHolidays) setHolidays(dbHolidays);
 
 
       
@@ -2634,7 +2636,8 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                     {[
                       { id: 'date_wise', label: 'DATE WISE REPORT' },
                       { id: 'monthly', label: 'MONTHLY REPORT' },
-                      { id: 'staff_wise', label: 'STAFF WISE REPORT' }
+                      { id: 'staff_wise', label: 'STAFF WISE REPORT' },
+                      { id: 'holidays', label: 'HOLIDAYS' }
                     ].map((tab) => (
                       <button
                         key={tab.id}
@@ -2680,9 +2683,7 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                             <button onClick={() => handleExportXLS(`Monthly_Attendance_${attendanceMonth}_${attendanceYear}`)} style={{ padding: '8px 16px', background: '#38bdf8', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(56,189,248,0.2)' }}>EXPORT AS XLS</button>
                           </div>
                         </div>
-                        <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.95rem', marginTop: '10px' }}>
-                          Total Working Days: 
-                        </div>
+                        
                       </div>
 
                       {(() => {
@@ -2734,7 +2735,7 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                           }
                         });
 
-                        const tableStaff = Array.from(staffMap.values()).sort((a, b) => a.sno - b.sno);
+                        const tableStaff = Array.from(staffMap.values()).filter((s: any) => s.name.toUpperCase().trim() !== 'REGIN MARY').sort((a, b) => a.sno - b.sno);
 
                         return (
                           <div style={{ overflowX: 'auto', border: '1px solid #94a3b8', background: 'white' }}>
@@ -2759,12 +2760,16 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                                     <td style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', color: '#334155' }}>{idx + 1}</td>
                                     <td style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', textAlign: 'left', color: '#64748b' }}>{s.name}</td>
                                     {days.map(d => {
+                                      const currentDateStr = `${y}-${(m+1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+                                      const holiday = holidays.find(h => h.holiday_date === currentDateStr);
+                                      const isHoliday = !!holiday;
                                       const isSunday = new Date(y, m, d).getDay() === 0;
                                       const isPresent = s.logs[d];
-                                      let cellText = isSunday ? 'S' : (isPresent ? 'X' : 'A');
-                                      let color = isSunday ? '#eab308' : (isPresent ? '#22c55e' : '#ef4444');
+                                      let cellText = isHoliday ? 'H' : isSunday ? 'S' : (isPresent ? 'X' : 'A');
+                                      let color = isHoliday ? '#3b82f6' : isSunday ? '#eab308' : (isPresent ? '#22c55e' : '#ef4444');
+                                      let bgColor = isHoliday ? '#eff6ff' : 'transparent';
                                       return (
-                                        <td key={d} style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', fontWeight: 800, color: color }}>
+                                        <td key={d} style={{ padding: '8px 4px', borderRight: '1px solid #94a3b8', fontWeight: 800, color: color, background: bgColor }} title={isHoliday ? holiday.description : ''}>
                                           {cellText}
                                         </td>
                                       );
@@ -2845,7 +2850,7 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                           }
                         });
 
-                        const tableStaff = Array.from(staffMap.values()).sort((a, b) => a.sno - b.sno);
+                        const tableStaff = Array.from(staffMap.values()).filter((s: any) => s.name.toUpperCase().trim() !== 'REGIN MARY').sort((a, b) => a.sno - b.sno);
                         const formattedDateStr = selDate.toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric'}).replace(/\//g, '-');
 
                         return (
@@ -2883,6 +2888,61 @@ const [attendanceList, setAttendanceList] = useState<any[]>([]);
                           </div>
                         );
                       })()}
+                    </div>
+                  )}
+
+                  {attendanceSubTab === 'holidays' && (
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '0 10px 20px 10px' }}>
+                      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '20px' }}>
+                        <h3 style={{ marginTop: 0, color: '#1e293b' }}>Manage Holidays</h3>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '20px' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Date</label>
+                            <input type="date" value={newHoliday} onChange={(e) => setNewHoliday(e.target.value)} style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Description</label>
+                            <input type="text" placeholder="Holiday name" id="holiday-desc-input" style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px', width: '250px' }} />
+                          </div>
+                          <button onClick={async () => {
+                            if (!newHoliday) return;
+                            const desc = document.getElementById('holiday-desc-input').value;
+                            const { data, error } = await supabase.from('holidays').insert([{ holiday_date: newHoliday, description: desc }]).select();
+                            if (!error && data) {
+                              setHolidays([...holidays, ...data]);
+                              setNewHoliday('');
+                              document.getElementById('holiday-desc-input').value = '';
+                            }
+                          }} style={{ padding: '8px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}>Add Holiday</button>
+                        </div>
+                        
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+                          <thead>
+                            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #cbd5e1' }}>
+                              <th style={{ padding: '10px' }}>Date</th>
+                              <th style={{ padding: '10px' }}>Description</th>
+                              <th style={{ padding: '10px', width: '100px' }}>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {holidays.map((h, i) => (
+                              <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                <td style={{ padding: '10px' }}>{new Date(h.holiday_date).toLocaleDateString('en-GB')}</td>
+                                <td style={{ padding: '10px' }}>{h.description}</td>
+                                <td style={{ padding: '10px' }}>
+                                  <button onClick={async () => {
+                                    await supabase.from('holidays').delete().eq('id', h.id);
+                                    setHolidays(holidays.filter(x => x.id !== h.id));
+                                  }} style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
+                                </td>
+                              </tr>
+                            ))}
+                            {holidays.length === 0 && (
+                              <tr><td colSpan={3} style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>No holidays added yet.</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
 
@@ -4131,7 +4191,7 @@ function SubmittedSurveysTab({ surveys }: { surveys: DraftSurvey[] }) {
 }
 
 // ─── Overview Tab ───────────────────────────────────────────────────
-function OverviewTab({ stats, loading, onExport, surveys, exporting }: { stats: any, loading: boolean, onExport: (type: "weekly" | "monthly" | "all") => void, surveys: DraftSurvey[], exporting: boolean }) {
+function OverviewTab({ stats, loading, onExport, surveys, exporting, attendanceLogs = [] }: { stats: any, loading: boolean, onExport: (type: "weekly" | "monthly" | "all") => void, surveys: DraftSurvey[], exporting: boolean, attendanceLogs?: any[] }) {
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [staffModalInitialTab, setStaffModalInitialTab] = useState<'staff' | 'events' | 'documents' | 'schemes' | 'collectives' | 'attendance' | 'services' | 'sea_members'>('staff');
@@ -4144,17 +4204,16 @@ function OverviewTab({ stats, loading, onExport, surveys, exporting }: { stats: 
   const todayStr = new Date().toISOString().split('T')[0];
   let activeAttendanceToday = 0;
   try {
-    const localLogs = localStorage.getItem('care_attendance_logs');
-    if (localLogs) {
-      const logs = JSON.parse(localLogs);
-      const today = new Date().toISOString().split('T')[0];
-      const uniqueCheckedInToday = new Set();
-      logs.forEach((log: any) => {
-        if (log.staff_name === 'Regin Mary') return;
-        if (log.login_time && log.login_time.startsWith(today)) uniqueCheckedInToday.add(log.staff_id);
-      });
-      activeAttendanceToday = uniqueCheckedInToday.size;
-    }
+    const today = new Date().toISOString().split('T')[0];
+    const uniqueCheckedInToday = new Set();
+    attendanceLogs.forEach((log: any) => {
+      const logName = (log.staff_name || '').toUpperCase().trim();
+      if (logName === 'REGIN MARY') return;
+      if (log.login_time && log.login_time.startsWith(today)) {
+        uniqueCheckedInToday.add(log.email || log.staff_name);
+      }
+    });
+    activeAttendanceToday = uniqueCheckedInToday.size;
   } catch(e) {}
   
   const localCC = localStorage.getItem('care_portal_collectives');
@@ -4617,22 +4676,36 @@ function LeaveRequestsTab() {
 
       {/* Search & Filter Bar */}
       <div className="chart-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '8px 14px', minWidth: '260px', flex: 1 }}>
-          <Search size={16} color="#64748b" />
-          <input
-            type="text"
-            placeholder="Search by staff email, name or reason..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.85rem', width: '100%', color: '#0f172a' }}
-          />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '8px 14px', minWidth: '260px', flex: 1 }}>
+            <Search size={16} color="#64748b" />
+            <input
+              type="text"
+              placeholder="Search by staff email, name or reason..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.85rem', width: '100%', color: '#0f172a' }}
+            />
+          </div>
+          <select value={leaveMonth} onChange={(e) => setLeaveMonth(e.target.value)} style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.85rem', color: '#0f172a', background: 'white' }}>
+            <option value="all">All Months</option>
+            {Array.from({length: 12}).map((_, i) => <option key={i} value={i}>{new Date(0, i).toLocaleString('en', {month: 'short'})}</option>)}
+          </select>
+          <select value={leaveYear} onChange={(e) => setLeaveYear(e.target.value)} style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.85rem', color: '#0f172a', background: 'white' }}>
+            {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
         </div>
 
         <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', borderRadius: '10px', padding: '4px' }}>
-          {(['all', 'pending', 'approved', 'rejected'] as const).map(st => (
+          {([
+            { id: 'all', label: 'All Requests' }, 
+            { id: 'pending', label: 'Pending' }, 
+            { id: 'approved', label: 'Approved' }, 
+            { id: 'rejected', label: 'Declined' }
+          ] as const).map(st => (
             <button
-              key={st}
-              onClick={() => setFilterStatus(st)}
+              key={st.id}
+              onClick={() => setFilterStatus(st.id as any)}
               style={{
                 border: 'none',
                 borderRadius: '8px',
@@ -4640,13 +4713,12 @@ function LeaveRequestsTab() {
                 fontSize: '0.78rem',
                 fontWeight: 700,
                 cursor: 'pointer',
-                textTransform: 'capitalize',
-                background: filterStatus === st ? '#1B3A5C' : 'transparent',
-                color: filterStatus === st ? 'white' : '#64748b',
+                background: filterStatus === st.id ? '#1B3A5C' : 'transparent',
+                color: filterStatus === st.id ? 'white' : '#64748b',
                 transition: 'all 150ms'
               }}
             >
-              {st}
+              {st.label}
             </button>
           ))}
         </div>
@@ -4753,33 +4825,53 @@ function LeaveRequestsTab() {
                   )}
 
                   {/* Actions */}
-                  {req.status === 'pending' && (
-                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
-                      <button
-                        onClick={() => handleOpenActionModal(req.id, 'reject', req.staffName || req.staffEmail)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca',
-                          borderRadius: '8px', padding: '8px 16px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
-                          transition: 'all 150ms'
-                        }}
-                      >
-                        <XCircle size={15} /> Decline Request
-                      </button>
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '14px', marginTop: 'auto', borderTop: '1px solid #e2e8f0' }}>
+                    {req.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => handleOpenActionModal(req.id, 'reject', req.staffName || req.staffEmail)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca',
+                            borderRadius: '8px', padding: '8px 16px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                            transition: 'all 150ms'
+                          }}
+                        >
+                          <XCircle size={15} /> Decline Request
+                        </button>
 
-                      <button
-                        onClick={() => handleOpenActionModal(req.id, 'approve', req.staffName || req.staffEmail)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none',
-                          borderRadius: '8px', padding: '8px 18px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
-                          boxShadow: '0 2px 10px rgba(16,185,129,0.3)', transition: 'all 150ms'
-                        }}
-                      >
-                        <CheckCheck size={15} /> Accept Request
-                      </button>
-                    </div>
-                  )}
+                        <button
+                          onClick={() => handleOpenActionModal(req.id, 'approve', req.staffName || req.staffEmail)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none',
+                            borderRadius: '8px', padding: '8px 18px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                            boxShadow: '0 2px 10px rgba(16,185,129,0.3)', transition: 'all 150ms'
+                          }}
+                        >
+                          <CheckCheck size={15} /> Approve
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={async () => {
+                        if (window.confirm('Are you sure you want to completely delete this leave request?')) {
+                           const s = getSupabase();
+                           await s.from('leave_requests').delete().eq('id', req.id);
+                           const remoteLeaves = await window.fetchLeaveRequestsFromSupabase?.() || []; // Or we can use the fetchLeaveRequestsFromSupabase imported at the top!
+                           setLeaveRequests(remoteLeaves);
+                        }
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        background: 'transparent', color: '#ef4444', border: '1px solid #fecaca',
+                        borderRadius: '8px', padding: '8px 16px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                        transition: 'all 150ms'
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -5046,7 +5138,7 @@ export default function AdminDashboard() {
 
       {/* Main content */}
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview'    && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} surveys={submittedSurveys} exporting={exporting} />}
+        {activeTab === 'overview'    && <OverviewTab stats={dashboardStats} loading={loadingStats} onExport={exportData} surveys={submittedSurveys} exporting={exporting} attendanceLogs={attendanceList} />}
         {activeTab === 'surveys'     && <SubmittedSurveysTab surveys={submittedSurveys} />}
         {activeTab === 'requests'    && <EditRequestsTab />}
         {activeTab === 'leaves'      && <LeaveRequestsTab />}

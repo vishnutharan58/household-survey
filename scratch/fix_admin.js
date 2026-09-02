@@ -1,23 +1,15 @@
 const fs = require('fs');
 let txt = fs.readFileSync('apps/web/src/pages/Admin/AdminDashboard.tsx', 'utf8');
 
-const correctBlock = `          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Membership Count</label>
-              <input type="number" value={membershipCount} onChange={e => setMembershipCount(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Meetings Conducted</label>
-              <input type="number" value={meetingsConducted} onChange={e => setMeetingsConducted(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Participants Count</label>
-              <input type="number" value={participantsCount} onChange={e => setParticipantsCount(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} />
-            </div>
-          </div>`;
+// 1. Exclude 'Regin Mary' from Daily/Monthly/Date-Wise tables
+const staffListAssignBad = `setStaffList(mappedStaff);`;
+const staffListAssignGood = `setStaffList(mappedStaff.filter(s => s.name.toUpperCase() !== 'REGIN MARY'));`;
+txt = txt.replace(staffListAssignBad, staffListAssignGood);
 
-const lines = txt.split('\n');
-lines.splice(904, 20, correctBlock); // replace lines 905 to 924 (0-indexed 904 to 923)
+const localStaffAssignBad = `setStaffList(localStaff ? JSON.parse(localStaff) : INITIAL_STAFF_DETAILS);`;
+const localStaffAssignGood = `setStaffList(localStaff ? JSON.parse(localStaff).filter(s => s.name.toUpperCase() !== 'REGIN MARY') : INITIAL_STAFF_DETAILS);`;
+txt = txt.replace(localStaffAssignBad, localStaffAssignGood);
 
-fs.writeFileSync('apps/web/src/pages/Admin/AdminDashboard.tsx', lines.join('\n'));
-console.log('Fixed JSX structure in AdminDashboard.');
+// Wait, the plan says: "Exclude Regin Mary: Add a filter condition (staff.name !== 'Regin Mary') when rendering the Daily Attendance and Monthly/Date-Wise tables"
+// That means we don't remove her from staffList, we remove her from the attendance table renders ONLY.
+// Let's undo that logic...
