@@ -1576,6 +1576,10 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [schemesList, setSchemesList] = useState<any[]>([]);
   const [collectivesList, setCollectivesList] = useState<any[]>([]);
   const [ccMeetingsLog, setCcMeetingsLog] = useState<any[]>([]);
+  const [ccSubTab, setCcSubTab] = useState<'overview' | 'monthly' | 'staff_wise' | 'yearly'>('overview');
+  const [ccMonthFilter, setCcMonthFilter] = useState<string>(`${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}`);
+  const [ccYearFilter, setCcYearFilter] = useState<string>(new Date().getFullYear().toString());
+  const [ccStaffFilter, setCcStaffFilter] = useState<string>('all');
 
   const getFilteredCcMeetings = () => {
     let filtered = ccMeetingsLog;
@@ -1599,10 +1603,6 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   };
 
   const filteredCcMeetings = getFilteredCcMeetings();
-  const [ccSubTab, setCcSubTab] = useState<'overview' | 'monthly' | 'staff_wise' | 'yearly'>('overview');
-  const [ccMonthFilter, setCcMonthFilter] = useState<string>(`${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}`);
-  const [ccYearFilter, setCcYearFilter] = useState<string>(new Date().getFullYear().toString());
-  const [ccStaffFilter, setCcStaffFilter] = useState<string>('all');
   const [isEditCcLogModalOpen, setIsEditCcLogModalOpen] = useState(false);
   const [editingCcLog, setEditingCcLog] = useState<any>(null);
   const [editingAttendance, setEditingAttendance] = useState<any>(null);
