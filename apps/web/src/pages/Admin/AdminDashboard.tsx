@@ -1620,8 +1620,34 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [isEditSeaMemberOpen, setIsEditSeaMemberOpen] = useState(false);
 
   // ─── HELPER FUNCTIONS (after all state) ──────────────────────
+  // Dynamic staff filtering: only show data for staff who currently exist in staffList
+  const activeStaffEmails = new Set(
+    staffList
+      .filter(s => !(s.name || '').toLowerCase().includes('regin mary'))
+      .map(s => (s.email || '').toLowerCase())
+      .filter(Boolean)
+  );
+  
+  const activeStaffNames = staffList
+    .filter(s => !(s.name || '').toLowerCase().includes('regin mary'))
+    .map(s => (s.name || '').toLowerCase())
+    .filter(Boolean);
+      
+  const isStaffActive = (name?: string, email?: string) => {
+    const e = (email || '').toLowerCase();
+    const n = (name || '').toLowerCase();
+    if (e && activeStaffEmails.has(e)) return true;
+    if (n && activeStaffNames.some(activeName => activeName.includes(n) || n.includes(activeName))) return true;
+    return false;
+  };
+
   const getFilteredCcMeetings = () => {
-    let filtered = ccMeetingsLog;
+    // Only show CC Meetings for staff members that exist in the system
+    let filtered = ccMeetingsLog.filter(l => {
+      const staffEmail = (l.staff_email || '').toLowerCase();
+      return staffList.some(s => (s.email || '').toLowerCase() === staffEmail);
+    });
+    
     if (ccSubTab === 'month' || ccSubTab === 'year') {
       if (ccYearFilter) {
         filtered = filtered.filter(l => l.meeting_date && l.meeting_date.startsWith(ccYearFilter));
@@ -1641,7 +1667,10 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
     return filtered;
   };
   const filteredCcMeetings = getFilteredCcMeetings();
+
   const attendanceStaffList = staffList.filter(s => !(s.name || '').toLowerCase().includes('regin mary'));
+  const activeStaffUsersList = staffUsersList.filter(s => isStaffActive(s.name, s.email));
+  const activeAttendanceList = attendanceList.filter(log => isStaffActive(log.staff_name, log.email));
 
   const handleAddHoliday = () => { if (newHoliday && !holidays.includes(newHoliday)) setHolidays([...holidays, newHoliday]); setNewHoliday(''); };
   const handleRemoveHoliday = (h: string) => setHolidays(holidays.filter(x => x !== h));
@@ -2820,13 +2849,13 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                         attendanceStaffList.forEach(s => staffMap.set((s.email || s.name || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, logs: {} }));
                         
                         // Add staff from staffUsersList if not present
-                        staffUsersList.forEach(s => {
+                        activeStaffUsersList.forEach(s => {
                           if (s.email && !staffMap.has(s.email.toLowerCase())) {
                             staffMap.set(s.email.toLowerCase(), { sno: staffMap.size + 1, name: s.name, email: s.email, logs: {} });
                           }
                         });
 
-                        attendanceList.forEach(log => {
+                        activeAttendanceList.forEach(log => {
                           if (!log.email && !log.staff_name) return;
                           
                           const logEmail = (log.email || '').toLowerCase();
@@ -2935,14 +2964,14 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                         attendanceStaffList.forEach(s => staffMap.set((s.email || s.name || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, in: null, out: null }));
 
                         // Add staff from staffUsersList if not present
-                        staffUsersList.forEach(s => {
+                        activeStaffUsersList.forEach(s => {
                           const key = (s.email || s.name || '').toLowerCase();
                           if (key && !staffMap.has(key)) {
                             staffMap.set(key, { sno: staffMap.size + 1, name: s.name, email: s.email, in: null, out: null });
                           }
                         });
                         
-                        attendanceList.forEach(log => {
+                        activeAttendanceList.forEach(log => {
                           if (!log.email && !log.staff_name) return;
                           
                           const logEmail = (log.email || '').toLowerCase();
@@ -3084,7 +3113,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                       }
                     });
                     
-                    staffUsersList.forEach(s => {
+                    activeStaffUsersList.forEach(s => {
                       const key = (s.email || s.name || '').toLowerCase();
                       if (key && !allStaffKeys.has(key)) {
                         allStaffKeys.add(key);
@@ -3092,7 +3121,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                       }
                     });
                     
-                    attendanceList.forEach(log => {
+                    activeAttendanceList.forEach(log => {
                       if (!log.email && !log.staff_name) return;
                       const logEmail = (log.email || '').toLowerCase();
                       const logNamePrefix = logEmail.split('@')[0];
@@ -3165,7 +3194,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                           // Pre-process attendance data
                           const staffLogs = new Map();
                           
-                          attendanceList.forEach(log => {
+                          activeAttendanceList.forEach(log => {
                             // Match either email or name against the filterKey
                             const logKey = (log.email || log.name || '').toLowerCase();
                             if (logKey && logKey === attendanceStaffFilter) {
