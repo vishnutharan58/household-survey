@@ -4335,22 +4335,26 @@ function OverviewTab({ stats, loading, onExport, surveys, exporting, attendanceL
   // Calculate dynamically during render so they update instantly when modal closes
   const localStaff = localStorage.getItem('care_portal_staff');
   const sList = localStaff ? JSON.parse(localStaff) : INITIAL_STAFF_DETAILS;
-  const staffCount = sList.length;
+  const staffCount = sList.filter((s: any) => !(s.name || '').toLowerCase().includes('regin mary')).length;
   
   const todayStr = new Date().toISOString().split('T')[0];
   let activeAttendanceToday = 0;
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const uniqueCheckedInToday = new Set();
-    attendanceLogs.forEach((log: any) => {
-      const logName = (log.staff_name || '').toUpperCase().trim();
-      if (logName === 'REGIN MARY') return;
-      if (log.login_time && log.login_time.startsWith(today)) {
-        uniqueCheckedInToday.add(log.email || log.staff_name);
-      }
-    });
-    activeAttendanceToday = uniqueCheckedInToday.size;
-  } catch(e) {}
+  if (stats && typeof stats.active_attendance_today === 'number') {
+    activeAttendanceToday = stats.active_attendance_today;
+  } else {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const uniqueCheckedInToday = new Set();
+      attendanceLogs.forEach((log: any) => {
+        const logName = (log.staff_name || '').toUpperCase().trim();
+        if (logName === 'REGIN MARY') return;
+        if (log.login_time && log.login_time.startsWith(today)) {
+          uniqueCheckedInToday.add(log.email || log.staff_name);
+        }
+      });
+      activeAttendanceToday = uniqueCheckedInToday.size;
+    } catch(e) {}
+  }
   
   const localCC = localStorage.getItem('care_portal_collectives');
   const ccList = localCC ? JSON.parse(localCC) : INITIAL_COLLECTIVES;
