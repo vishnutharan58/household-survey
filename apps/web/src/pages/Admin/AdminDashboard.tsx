@@ -1623,8 +1623,6 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   // Dynamic staff filtering: only show data for staff who currently exist in staffList
   const isExcluded = (s: any) => {
     if ((s.name || '').toLowerCase().includes('regin mary')) return true;
-    const sno = Number(s.sno);
-    if (!isNaN(sno) && sno >= 1 && sno <= 8) return true;
     return false;
   };
 
