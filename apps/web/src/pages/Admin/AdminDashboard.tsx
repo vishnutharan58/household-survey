@@ -1586,6 +1586,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [editingAttendance, setEditingAttendance] = useState<any>(null);
   const [holidays, setHolidays] = useState<any[]>([]);
   const [newHoliday, setNewHoliday] = useState('');
+  const [newHolidayDesc, setNewHolidayDesc] = useState('');
   const [attendanceList, setAttendanceList] = useState<any[]>([]);
   // @ts-ignore
   const [staffUsersList, setStaffUsersList] = useState<any[]>([]);
@@ -3051,16 +3052,18 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                           </div>
                           <div>
                             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Description</label>
-                            <input type="text" placeholder="Holiday name" id="holiday-desc-input" style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px', width: '250px' }} />
+                            <input type="text" placeholder="Holiday name" value={newHolidayDesc} onChange={(e) => setNewHolidayDesc(e.target.value)} style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px', width: '250px' }} />
                           </div>
                           <button onClick={async () => {
                             if (!newHoliday) return;
-                            const desc = document.getElementById('holiday-desc-input').value;
-                            const { data, error } = await supabase.from('holidays').insert([{ holiday_date: newHoliday, description: desc }]).select();
+                            const sb = getSupabase() as any;
+                            const { data, error } = await sb.from('holidays').insert([{ holiday_date: newHoliday, description: newHolidayDesc }]).select();
                             if (!error && data) {
                               setHolidays([...holidays, ...data]);
                               setNewHoliday('');
-                              document.getElementById('holiday-desc-input').value = '';
+                              setNewHolidayDesc('');
+                            } else if (error) {
+                              alert('Error: ' + error.message);
                             }
                           }} style={{ padding: '8px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}>Add Holiday</button>
                         </div>
@@ -3080,7 +3083,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                                 <td style={{ padding: '10px' }}>{h.description}</td>
                                 <td style={{ padding: '10px' }}>
                                   <button onClick={async () => {
-                                    await supabase.from('holidays').delete().eq('id', h.id);
+                                    const sb = getSupabase() as any; await sb.from('holidays').delete().eq('id', h.id);
                                     setHolidays(holidays.filter(x => x.id !== h.id));
                                   }} style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
                                 </td>
