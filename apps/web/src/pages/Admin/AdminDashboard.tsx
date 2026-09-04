@@ -1643,6 +1643,12 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
     const n = (name || '').toLowerCase();
     if (e && activeStaffEmails.has(e)) return true;
     if (n && activeStaffNames.some(activeName => activeName.includes(n) || n.includes(activeName))) return true;
+    
+    // Fallback: match email prefix against active staff names (useful for alternative auth emails)
+    if (e) {
+      const emailPrefix = e.split('@')[0];
+      if (emailPrefix && activeStaffNames.some(activeName => activeName.includes(emailPrefix))) return true;
+    }
     return false;
   };
 
