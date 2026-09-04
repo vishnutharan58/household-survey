@@ -1621,15 +1621,22 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
 
   // ─── HELPER FUNCTIONS (after all state) ──────────────────────
   // Dynamic staff filtering: only show data for staff who currently exist in staffList
+  const isExcluded = (s: any) => {
+    if ((s.name || '').toLowerCase().includes('regin mary')) return true;
+    const sno = Number(s.sno);
+    if (!isNaN(sno) && sno >= 1 && sno <= 8) return true;
+    return false;
+  };
+
   const activeStaffEmails = new Set(
     staffList
-      .filter(s => !(s.name || '').toLowerCase().includes('regin mary'))
+      .filter(s => !isExcluded(s))
       .map(s => (s.email || '').toLowerCase())
       .filter(Boolean)
   );
   
   const activeStaffNames = staffList
-    .filter(s => !(s.name || '').toLowerCase().includes('regin mary'))
+    .filter(s => !isExcluded(s))
     .map(s => (s.name || '').toLowerCase())
     .filter(Boolean);
       
@@ -1668,7 +1675,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   };
   const filteredCcMeetings = getFilteredCcMeetings();
 
-  const attendanceStaffList = staffList.filter(s => !(s.name || '').toLowerCase().includes('regin mary'));
+  const attendanceStaffList = staffList.filter(s => !isExcluded(s));
   const activeStaffUsersList = staffUsersList.filter(s => isStaffActive(s.name, s.email));
   const activeAttendanceList = attendanceList.filter(log => isStaffActive(log.staff_name, log.email));
 
@@ -2847,13 +2854,6 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                         // Pre-process attendance data
                         const staffMap = new Map();
                         attendanceStaffList.forEach(s => staffMap.set((s.email || s.name || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, logs: {} }));
-                        
-                        // Add staff from staffUsersList if not present
-                        activeStaffUsersList.forEach(s => {
-                          if (s.email && !staffMap.has(s.email.toLowerCase())) {
-                            staffMap.set(s.email.toLowerCase(), { sno: staffMap.size + 1, name: s.name, email: s.email, logs: {} });
-                          }
-                        });
 
                         activeAttendanceList.forEach(log => {
                           if (!log.email && !log.staff_name) return;
@@ -2867,23 +2867,22 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                           } else {
                             const sName = (log.staff_name || '').toLowerCase();
                             const entry = Array.from(staffMap.entries()).find(([k, v]) => {
+                              const vEmail = (v.email || '').toLowerCase();
+                              if (logEmail && vEmail === logEmail) return true;
                               const vName = (v.name || '').toLowerCase();
-                              if (logNamePrefix && vName.includes(logNamePrefix)) return true;
-                              if (sName && (vName === sName || vName.includes(sName) || sName.includes(vName))) return true;
+                              if (logNamePrefix && vName && vName.includes(logNamePrefix)) return true;
+                              if (sName && vName && (vName === sName || vName.includes(sName) || sName.includes(vName))) return true;
                               return false;
                             });
                             if (entry) keyFound = entry[0];
                           }
                           
-                          const finalKey = keyFound || logEmail || (log.staff_name || '').toLowerCase();
-                          
-                          if (!staffMap.has(finalKey)) {
-                            staffMap.set(finalKey, { sno: staffMap.size + 1, name: log.staff_name || (log.email ? log.email.split('@')[0] : 'Unknown'), email: log.email || '', logs: {} });
-                          }
-                          const date = new Date(log.login_time || log.loginTime);
-                          if (date.getMonth() === m && date.getFullYear() === y) {
-                            const d = date.getDate();
-                            staffMap.get(finalKey).logs[d] = true;
+                          if (keyFound && staffMap.has(keyFound)) {
+                            const date = new Date(log.login_time || log.loginTime);
+                            if (date.getMonth() === m && date.getFullYear() === y) {
+                              const d = date.getDate();
+                              staffMap.get(keyFound).logs[d] = true;
+                            }
                           }
                         });
 
@@ -2963,14 +2962,6 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                         const staffMap = new Map();
                         attendanceStaffList.forEach(s => staffMap.set((s.email || s.name || '').toLowerCase(), { sno: s.sno, name: s.name, email: s.email, in: null, out: null }));
 
-                        // Add staff from staffUsersList if not present
-                        activeStaffUsersList.forEach(s => {
-                          const key = (s.email || s.name || '').toLowerCase();
-                          if (key && !staffMap.has(key)) {
-                            staffMap.set(key, { sno: staffMap.size + 1, name: s.name, email: s.email, in: null, out: null });
-                          }
-                        });
-                        
                         activeAttendanceList.forEach(log => {
                           if (!log.email && !log.staff_name) return;
                           
@@ -2983,24 +2974,23 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                           } else {
                             const sName = (log.staff_name || '').toLowerCase();
                             const entry = Array.from(staffMap.entries()).find(([k, v]) => {
+                              const vEmail = (v.email || '').toLowerCase();
+                              if (logEmail && vEmail === logEmail) return true;
                               const vName = (v.name || '').toLowerCase();
-                              if (logNamePrefix && vName.includes(logNamePrefix)) return true;
-                              if (sName && (vName === sName || vName.includes(sName) || sName.includes(vName))) return true;
+                              if (logNamePrefix && vName && vName.includes(logNamePrefix)) return true;
+                              if (sName && vName && (vName === sName || vName.includes(sName) || sName.includes(vName))) return true;
                               return false;
                             });
                             if (entry) keyFound = entry[0];
                           }
                           
-                          const finalKey = keyFound || logEmail || (log.staff_name || '').toLowerCase();
-                          
-                          if (!staffMap.has(finalKey)) {
-                            staffMap.set(finalKey, { sno: staffMap.size + 1, name: log.staff_name || (log.email ? log.email.split('@')[0] : 'Unknown'), email: log.email || '', in: null, out: null });
-                          }
-                          const date = new Date(log.login_time || log.loginTime);
-                          if (date.toDateString() === selDate.toDateString()) {
-                            staffMap.get(finalKey).in = new Date(log.login_time || log.loginTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                            if (log.logout_time || log.logoutTime) {
-                              staffMap.get(finalKey).out = new Date(log.logout_time || log.logoutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                          if (keyFound && staffMap.has(keyFound)) {
+                            const date = new Date(log.login_time || log.loginTime);
+                            if (date.toDateString() === selDate.toDateString()) {
+                              staffMap.get(keyFound).in = new Date(log.login_time || log.loginTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                              if (log.logout_time || log.logoutTime) {
+                                staffMap.get(keyFound).out = new Date(log.logout_time || log.logoutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                              }
                             }
                           }
                         });
@@ -3113,39 +3103,8 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                       }
                     });
                     
-                    activeStaffUsersList.forEach(s => {
-                      const key = (s.email || s.name || '').toLowerCase();
-                      if (key && !allStaffKeys.has(key)) {
-                        allStaffKeys.add(key);
-                        allStaffOptions.push({ ...s, filterKey: key });
-                      }
-                    });
-                    
-                    activeAttendanceList.forEach(log => {
-                      if (!log.email && !log.staff_name) return;
-                      const logEmail = (log.email || '').toLowerCase();
-                      const logNamePrefix = logEmail.split('@')[0];
-                      
-                      let keyFound = null;
-                      if (logEmail && allStaffKeys.has(logEmail)) {
-                         keyFound = logEmail;
-                      } else {
-                         const sName = (log.staff_name || '').toLowerCase();
-                         const entry = allStaffOptions.find(o => {
-                           const oName = (o.name || '').toLowerCase();
-                           if (logNamePrefix && oName.includes(logNamePrefix)) return true;
-                           if (sName && (oName === sName || oName.includes(sName) || sName.includes(oName))) return true;
-                           return false;
-                         });
-                         if (entry) keyFound = entry.filterKey;
-                      }
-                      const finalKey = keyFound || logEmail || (log.staff_name || '').toLowerCase();
-                      
-                      if (!allStaffKeys.has(finalKey)) {
-                        allStaffKeys.add(finalKey);
-                        allStaffOptions.push({ email: log.email || '', name: log.staff_name || (log.email ? log.email.split('@')[0] : 'Unknown'), filterKey: finalKey });
-                      }
-                    });
+                    // Removed activeStaffUsersList and activeAttendanceList adding logic
+                    // allStaffOptions is already populated perfectly from attendanceStaffList
 
                     return (
                       <div style={{ flex: 1, overflowY: 'auto', padding: '0 10px 20px 10px' }}>
@@ -3195,9 +3154,24 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                           const staffLogs = new Map();
                           
                           activeAttendanceList.forEach(log => {
-                            // Match either email or name against the filterKey
-                            const logKey = (log.email || log.name || '').toLowerCase();
-                            if (logKey && logKey === attendanceStaffFilter) {
+                            const logEmail = (log.email || '').toLowerCase();
+                            const logNamePrefix = logEmail.split('@')[0];
+                            const sName = (log.staff_name || '').toLowerCase();
+                            
+                            let keyFound = null;
+                            if (logEmail && logEmail === attendanceStaffFilter) {
+                              keyFound = logEmail;
+                            } else {
+                              const vEmail = (selectedStaff.email || '').toLowerCase();
+                              if (logEmail && vEmail === logEmail) keyFound = attendanceStaffFilter;
+                              else {
+                                const vName = (selectedStaff.name || '').toLowerCase();
+                                if (logNamePrefix && vName && vName.includes(logNamePrefix)) keyFound = attendanceStaffFilter;
+                                else if (sName && vName && (vName === sName || vName.includes(sName) || sName.includes(vName))) keyFound = attendanceStaffFilter;
+                              }
+                            }
+                            
+                            if (keyFound) {
                               const date = new Date(log.login_time || log.loginTime);
                               if (date.getMonth() === m && date.getFullYear() === y) {
                                 const d = date.getDate();
