@@ -729,12 +729,10 @@ function EditStaffModal({ staff, onClose, onSave }: EditStaffModalProps) {
               <input type="email" placeholder="e.g. regin@gmail.com" value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} required />
             </div>
           </div>
-          {!staff && (
-            <div>
-              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Password (For Login)</label>
-              <input type="password" placeholder="Min 6 characters" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} required />
-            </div>
-          )}
+          <div>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Password (For Login){staff ? ' (Leave blank to keep existing)' : ''}</label>
+            <input type="password" placeholder="Min 6 characters" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} required={!staff} />
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Joining Date</label>
@@ -1959,15 +1957,19 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
             });
             if (authError) {
               console.error("Auth creation error:", authError);
-              alert("Failed to create user login: " + authError.message);
-              throw authError;
-            }
-            
-            // Insert into staff_users
-            const { error: staffUserError } = await supabase.from('staff_users').insert([{ email: preparedData.email, name: preparedData.name }]);
-            if (staffUserError) {
-                console.error("Failed to insert into staff_users", staffUserError);
-                // Non-blocking but should be noted
+              if (isNew) {
+                alert("Failed to create user login: " + authError.message);
+                throw authError;
+              } else {
+                alert("Note: Failed to add password (user login might already exist). Error: " + authError.message);
+              }
+            } else {
+              // Insert into staff_users
+              const { error: staffUserError } = await supabase.from('staff_users').insert([{ email: preparedData.email, name: preparedData.name }]);
+              if (staffUserError) {
+                  console.error("Failed to insert into staff_users", staffUserError);
+                  // Non-blocking but should be noted
+              }
             }
           }
           const { error } = await supabase.from('staff_details').insert([dbObj]);
@@ -1975,6 +1977,31 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
         } else {
           const { error } = await supabase.from('staff_details').update(dbObj).eq('id', preparedData.id);
           if (error) throw error;
+          
+          if (password) {
+            // Create User in Auth using secondary client to not log out Admin
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+            const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder_key';
+            const secClient = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+            const { error: authError } = await secClient.auth.signUp({
+              email: preparedData.email,
+              password: password,
+              options: {
+                data: { role: 'staff', name: preparedData.name }
+              }
+            });
+            if (authError) {
+              console.error("Auth creation error:", authError);
+              alert("Note: Failed to add password (user login might already exist). Error: " + authError.message);
+            } else {
+              // Insert into staff_users
+              const { error: staffUserError } = await supabase.from('staff_users').insert([{ email: preparedData.email, name: preparedData.name }]);
+              if (staffUserError) {
+                  console.error("Failed to insert into staff_users", staffUserError);
+              }
+            }
+          }
         }
         await loadData();
       } catch (err) {
