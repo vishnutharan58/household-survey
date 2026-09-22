@@ -691,7 +691,7 @@ function EditStaffModal({ staff, onClose, onSave }: EditStaffModalProps) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <form onSubmit={handleFormSubmit} style={{ width: '100%', maxWidth: '500px', background: 'white', borderRadius: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         <div style={{ background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>{staff ? '📝 Edit CARE Staff Member' : '➕ Add CARE Staff Member'}</h3>
@@ -784,7 +784,7 @@ function EditDocumentListModal({ document, onClose, onSave }: EditDocumentListMo
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <form onSubmit={handleFormSubmit} style={{ width: '100%', maxWidth: '440px', background: 'white', borderRadius: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         <div style={{ background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>{document ? '📝 Edit Document' : '➕ Add Document'}</h3>
@@ -837,7 +837,7 @@ function EditSchemeListModal({ scheme, onClose, onSave }: EditSchemeListModalPro
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <form onSubmit={handleFormSubmit} style={{ width: '100%', maxWidth: '440px', background: 'white', borderRadius: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         <div style={{ background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>{scheme ? '📝 Edit Scheme' : '➕ Add Scheme'}</h3>
@@ -899,7 +899,7 @@ function EditCollectiveModal({ collective, onClose, onSave }: EditCollectiveModa
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <form onSubmit={handleFormSubmit} style={{ width: '100%', maxWidth: '440px', background: 'white', borderRadius: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         <div style={{ background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>{collective ? '📝 Edit Collective' : '➕ Add Collective'}</h3>
@@ -962,7 +962,7 @@ function EditOtherServicesModal({ service, onClose, onSave }: EditOtherServicesM
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <form onSubmit={handleFormSubmit} style={{ width: '100%', maxWidth: '440px', background: 'white', borderRadius: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         <div style={{ background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>{service ? '📝 Edit Service Option' : '➕ Add Service Option'}</h3>
@@ -1187,7 +1187,7 @@ function EventDetailModal({ event, onClose, onLogChange }: EventDetailModalProps
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <div style={{ width: '100%', maxWidth: '600px', background: 'white', borderRadius: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         <div style={{ background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>📋 Detailed Event Page - {event.sno}</h3>
@@ -1496,7 +1496,7 @@ function EditSeaMemberModal({ member, onClose, onSave }: EditSeaMemberModalProps
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(10px)', padding: '20px' }} onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <form onSubmit={handleFormSubmit} style={{ width: '100%', maxWidth: '500px', background: 'white', borderRadius: '20px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         <div style={{ background: 'linear-gradient(135deg,#1B3A5C,#2A9D8F)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>{member ? '📝 Edit SEA Member' : '➕ Add SEA Member'}</h3>
