@@ -200,6 +200,23 @@ export default function SurveyForm() {
   const isEditApproved = isAdmin || editRequest?.status === 'approved';
 
   const [activeTab, setActiveTab] = useState(0);
+  const [dynamicHamlets, setDynamicHamlets] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    const fetchHamlets = async () => {
+      if (!user?.email) return;
+      try {
+        const supabase = getSupabase() as any;
+        const { data } = await supabase.from('staff_details').select('assigned_hamlet_codes').eq('email', user.email).single();
+        if (data?.assigned_hamlet_codes) {
+          setDynamicHamlets(data.assigned_hamlet_codes.split(',').map((s: string) => s.trim()).filter(Boolean));
+        }
+      } catch (err) {
+        console.error("Failed to fetch dynamic hamlets:", err);
+      }
+    };
+    fetchHamlets();
+  }, [user?.email]);
 
   // Load existing draft or create new
   const [draft, setDraft] = useState<DraftSurvey>(() => {
@@ -804,8 +821,7 @@ export default function SurveyForm() {
                     // Admin sees a plain read-only field
                     <input type="text" disabled className="mt-1 block w-full border rounded-md p-2 bg-gray-100" value={draft.household.hamlet_code || ''} />
                   ) : (() => {
-                    // Build option list: staff's assigned hamlets + any already-stored value
-                    const assignedHamlets = STAFF_HAMLET_MAP[user?.email || ''] ?? [];
+                    const assignedHamlets = dynamicHamlets || (STAFF_HAMLET_MAP[user?.email || ''] ?? []);
                     const storedCode = draft.household.hamlet_code || '';
                     // Fallback: if staff has no map entry, use auth hamlet_code as single option
                     const baseList = assignedHamlets.length > 0 ? assignedHamlets : (hamlet_code ? [hamlet_code] : []);

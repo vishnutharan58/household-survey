@@ -656,16 +656,17 @@ interface EditStaffModalProps {
 }
 
 function EditStaffModal({ staff, onClose, onSave }: EditStaffModalProps) {
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState(staff?.plain_password || '');
   const [sno, setSno] = useState(staff?.sno?.toString() || '');
   const [name, setName] = useState(staff?.name || '');
-  const [bloodGroup, setBloodGroup] = useState(staff?.bloodGroup || '');
+  const [bloodGroup, setBloodGroup] = useState(staff?.bloodGroup || staff?.blood_group || '');
   const [qualification, setQualification] = useState(staff?.qualification || '');
   const [phone, setPhone] = useState(staff?.phone || '');
   const [designation, setDesignation] = useState(staff?.designation || '');
-  const [joiningDate, setJoiningDate] = useState(staff?.joiningDate || '');
-  const [workExperience, setWorkExperience] = useState(staff?.workExperience || '');
+  const [joiningDate, setJoiningDate] = useState(staff?.joiningDate || staff?.joining_date || '');
+  const [workExperience, setWorkExperience] = useState(staff?.workExperience || staff?.work_experience || '');
   const [email, setEmail] = useState(staff?.email || '');
+  const [hamletCodes, setHamletCodes] = useState(staff?.assigned_hamlet_codes || '');
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -683,7 +684,9 @@ function EditStaffModal({ staff, onClose, onSave }: EditStaffModalProps) {
       designation,
       joiningDate,
       workExperience,
-      email
+      email,
+      plain_password: password,
+      assigned_hamlet_codes: hamletCodes
     }, password);
   };
 
@@ -729,9 +732,15 @@ function EditStaffModal({ staff, onClose, onSave }: EditStaffModalProps) {
               <input type="email" placeholder="e.g. regin@gmail.com" value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} required />
             </div>
           </div>
-          <div>
-            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Password (For Login){staff ? ' (Leave blank to keep existing)' : ''}</label>
-            <input type="password" placeholder="Min 6 characters" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} required={!staff} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Password (For Login/View)</label>
+              <input type="text" placeholder="Min 6 characters" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} required={!staff} />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Assigned Hamlet Codes</label>
+              <input type="text" placeholder="e.g. 1.1, 1.2" value={hamletCodes} onChange={e => setHamletCodes(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} />
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
@@ -1939,7 +1948,9 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
           designation: preparedData.designation,
           email: preparedData.email,
           joining_date: preparedData.joiningDate || null,
-          work_experience: preparedData.workExperience
+          work_experience: preparedData.workExperience,
+          plain_password: preparedData.plain_password || null,
+          assigned_hamlet_codes: preparedData.assigned_hamlet_codes || null
         };
         if (isNew) {
           if (password) {

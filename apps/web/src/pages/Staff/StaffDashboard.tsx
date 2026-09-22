@@ -453,7 +453,25 @@ export default function StaffDashboard() {
     }
   };
 
-  const staffHamlets = user?.email ? (STAFF_HAMLET_MAP[user.email] ?? []) : [];
+  const [dynamicHamlets, setDynamicHamlets] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    const fetchHamlets = async () => {
+      if (!user?.email) return;
+      try {
+        const supabase = getSupabase() as any;
+        const { data } = await supabase.from('staff_details').select('assigned_hamlet_codes').eq('email', user.email).single();
+        if (data?.assigned_hamlet_codes) {
+          setDynamicHamlets(data.assigned_hamlet_codes.split(',').map((s: string) => s.trim()).filter(Boolean));
+        }
+      } catch (err) {
+        console.error("Failed to fetch dynamic hamlets:", err);
+      }
+    };
+    fetchHamlets();
+  }, [user?.email]);
+
+  const staffHamlets = dynamicHamlets || (user?.email ? (STAFF_HAMLET_MAP[user.email] ?? []) : []);
 
   // Auto-initialize hamlet_code if it is not in the user's assigned hamlets list (e.g. placeholder 'HAM-001')
   useEffect(() => {
