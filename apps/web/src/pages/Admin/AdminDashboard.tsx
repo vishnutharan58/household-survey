@@ -2618,6 +2618,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                                   <th style={{ padding: '10px 16px', textAlign: 'center', color: '#475569', fontWeight: 700 }}>Achievement %</th>
                                   <th style={{ padding: '10px 16px', textAlign: 'center', color: '#475569', fontWeight: 700 }}>Date</th>
                                   <th style={{ padding: '10px 16px', textAlign: 'center', color: '#475569', fontWeight: 700 }}>Place</th>
+                                  <th style={{ padding: '10px 16px', textAlign: 'center', color: '#475569', fontWeight: 700 }}>Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -2639,6 +2640,12 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                                       </td>
                                       <td style={{ padding: '10px 16px', textAlign: 'center', color: '#64748b', fontSize: '0.78rem' }}>{ev.event_date ? new Date(ev.event_date).toLocaleDateString('en-GB') : '—'}</td>
                                       <td style={{ padding: '10px 16px', textAlign: 'center', color: '#64748b', fontSize: '0.78rem' }}>{ev.place || '—'}</td>
+                                      <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                          <button onClick={() => { setEditingEvent(ev); setIsEditEventOpen(true); }} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: '4px' }} title="Edit"><Edit size={14} /></button>
+                                          <button onClick={(e) => handleDeleteEvent(ev.id, e)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }} title="Delete"><Trash2 size={14} /></button>
+                                        </div>
+                                      </td>
                                     </tr>
                                   );
                                 })}
@@ -2647,7 +2654,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                                   <td style={{ padding: '10px 16px', textAlign: 'center', color: '#475569' }}>{totalPlanned}</td>
                                   <td style={{ padding: '10px 16px', textAlign: 'center', color: '#2A9D8F' }}>{totalAchieved}</td>
                                   <td style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 800, color: '#3b82f6' }}>{overallPct}%</td>
-                                  <td colSpan={2}></td>
+                                  <td colSpan={3}></td>
                                 </tr>
                               </tbody>
                             </table>
