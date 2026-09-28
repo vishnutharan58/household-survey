@@ -5,7 +5,7 @@ import type { DraftSurvey } from '@pro-vision-care/shared';
 import { useNavigate } from 'react-router-dom';
 import {
   LogOut, Download, Users, Home, AlertTriangle, TrendingUp,
-  LayoutDashboard, ClipboardList, Search, Eye, X, MapPin,
+  LayoutDashboard, ClipboardList, Search, Eye, EyeOff, X, MapPin,
   CalendarDays, Calendar, User2, FileCheck2, ChevronDown, ChevronUp,
   Pencil, CheckCheck, XCircle, Clock, Bell, ChevronLeft, ChevronRight,
   PlusCircle, Trash2, UploadCloud, Edit, Award, Compass, FileText, Activity, Plus
@@ -657,6 +657,7 @@ interface EditStaffModalProps {
 
 function EditStaffModal({ staff, onClose, onSave }: EditStaffModalProps) {
   const [password, setPassword] = useState(staff?.plain_password || '');
+  const [showPassword, setShowPassword] = useState(false);
   const [sno, setSno] = useState(staff?.sno?.toString() || '');
   const [name, setName] = useState(staff?.name || '');
   const [bloodGroup, setBloodGroup] = useState(staff?.bloodGroup || staff?.blood_group || '');
@@ -735,7 +736,16 @@ function EditStaffModal({ staff, onClose, onSave }: EditStaffModalProps) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Password (For Login/View)</label>
-              <input type="text" placeholder="Min 6 characters" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem' }} required={!staff} />
+              <div style={{ position: 'relative' }}>
+                <input type={showPassword ? "text" : "password"} placeholder="Min 6 characters" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.86rem', paddingRight: '40px' }} required={!staff} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div>
               <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Assigned Hamlet Codes</label>
