@@ -29,7 +29,7 @@ export default function StaffDashboard() {
   const [ccList, setCcList] = useState<any[]>([]);
   const [loadingCc, setLoadingCc] = useState(false);
   const [selectedCcId, setSelectedCcId] = useState('');
-  const [ccFormData, setCcFormData] = useState({ participants_count: '', start_date: '', end_date: '', village: '' });
+  const [ccFormData, setCcFormData] = useState({ participants_count: '', start_date: '', end_date: '', village: '', custom_village: '' });
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [eventsList, setEventsList] = useState<any[]>([]);
@@ -173,7 +173,8 @@ export default function StaffDashboard() {
             participants_count: '',
             start_date: '',
             end_date: '',
-            village: ''
+            village: '',
+            custom_village: ''
           });
         }
       }
@@ -220,13 +221,13 @@ export default function StaffDashboard() {
         participants_added: participantsAdded,
         start_date: ccFormData.start_date || null,
         end_date: ccFormData.end_date || null,
-        village: ccFormData.village || null
+        village: (ccFormData.village === 'Others' ? ccFormData.custom_village : ccFormData.village) || null
       }]);
 
       if (logError) throw logError;
       
       alert(`Successfully added to ${cc.name}`);
-      setCcFormData({ participants_count: '', start_date: '', end_date: '', village: '' });
+      setCcFormData({ participants_count: '', start_date: '', end_date: '', village: '', custom_village: '' });
       fetchCCs();
     } catch(e) {
       console.error(e);
@@ -1506,7 +1507,8 @@ export default function StaffDashboard() {
                             participants_count: '',
                             start_date: '',
                             end_date: '',
-                            village: ''
+                            village: '',
+                            custom_village: ''
                           });
                         }
                       }}
@@ -1534,7 +1536,7 @@ export default function StaffDashboard() {
                       <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Village</label>
                       <select
                         value={ccFormData.village}
-                        onChange={e => setCcFormData({...ccFormData, village: e.target.value})}
+                        onChange={e => setCcFormData({...ccFormData, village: e.target.value, custom_village: e.target.value === 'Others' ? '' : ccFormData.custom_village})}
                         style={{ padding: '12px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', outline: 'none', background: 'white' }}
                       >
                         <option value="" disabled>Select Village</option>
@@ -1547,7 +1549,17 @@ export default function StaffDashboard() {
                         <option value="Kesavanputhenthurai">Kesavanputhenthurai</option>
                         <option value="Pallam">Pallam</option>
                         <option value="Keezha Manakudy">Keezha Manakudy</option>
+                        <option value="Others">Others</option>
                       </select>
+                      {ccFormData.village === 'Others' && (
+                        <input
+                          type="text"
+                          placeholder="Enter village name"
+                          value={ccFormData.custom_village}
+                          onChange={e => setCcFormData({...ccFormData, custom_village: e.target.value})}
+                          style={{ padding: '12px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', outline: 'none', background: 'white', marginTop: '8px' }}
+                        />
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
