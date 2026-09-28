@@ -1794,7 +1794,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
       
       if (dbStaff && dbStaff.length > 0) {
         const mappedStaff = dbStaff.map((s: any) => ({
-          id: s.id, sno: s.sno, name: s.name, bloodGroup: s.blood_group, qualification: s.qualification, phone: s.phone, designation: s.designation, email: s.email, joiningDate: s.joining_date, workExperience: s.work_experience
+          id: s.id, sno: s.sno, name: s.name, bloodGroup: s.blood_group, qualification: s.qualification, phone: s.phone, designation: s.designation, email: s.email, joiningDate: s.joining_date, workExperience: s.work_experience, plain_password: s.plain_password, assigned_hamlet_codes: s.assigned_hamlet_codes
         }));
         setStaffList(mappedStaff);
         localStorage.setItem('care_portal_staff', JSON.stringify(mappedStaff));
