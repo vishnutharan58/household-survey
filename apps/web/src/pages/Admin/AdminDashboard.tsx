@@ -1137,21 +1137,19 @@ function EventDetailModal({ event, onClose, onLogChange }: EventDetailModalProps
   };
 
   useEffect(() => {
-    if (activeTab === 'logs' && logs.length === 0) {
-      const fetchLogs = async () => {
-        setLoadingLogs(true);
-        try {
-          const supabase = getSupabase() as any;
-          const { data } = await supabase.from('event_reports').select('*').eq('event_id', event.id).order('created_at', { ascending: false });
-          if (data) setLogs(data);
-        } catch (err) {
-          console.error(err);
-        }
-        setLoadingLogs(false);
-      };
-      fetchLogs();
-    }
-  }, [activeTab, event.id, logs.length]);
+    const fetchLogs = async () => {
+      setLoadingLogs(true);
+      try {
+        const supabase = getSupabase() as any;
+        const { data } = await supabase.from('event_reports').select('*').eq('event_id', event.id).order('created_at', { ascending: false });
+        if (data) setLogs(data);
+      } catch (err) {
+        console.error(err);
+      }
+      setLoadingLogs(false);
+    };
+    fetchLogs();
+  }, [event.id]);
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportMonth, setReportMonth] = useState('2026-07');
   const [reportQuarter, setReportQuarter] = useState('Q1-2026');
@@ -1353,7 +1351,9 @@ function EventDetailModal({ event, onClose, onLogChange }: EventDetailModalProps
                   <div key={log.id} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
                       <div>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A9D8F', background: 'rgba(42,157,143,0.1)', padding: '3px 8px', borderRadius: '4px' }}>{log.staff_email}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2A9D8F', background: 'rgba(42,157,143,0.1)', padding: '3px 8px', borderRadius: '4px' }}>
+                          {log.staff_name ? `${log.staff_name} (${log.staff_email})` : log.staff_email}
+                        </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>{new Date(log.created_at).toLocaleString()}</span>
@@ -1600,6 +1600,7 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
   const [ccStaffFilter, setCcStaffFilter] = useState<string>('all');
   const [isEditCcLogModalOpen, setIsEditCcLogModalOpen] = useState(false);
   const [editingCcLog, setEditingCcLog] = useState<any>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [editingAttendance, setEditingAttendance] = useState<any>(null);
   const [holidays, setHolidays] = useState<any[]>([]);
   const [newHoliday, setNewHoliday] = useState('');
@@ -2820,12 +2821,13 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                             <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800 }}>Village</th>
                             <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800 }}>Staff Name</th>
                             <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800, textAlign: 'center' }}>Total Participants</th>
+                            <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800, textAlign: 'center' }}>Images</th>
                             <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 800, textAlign: 'center' }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {filteredCcMeetings.length === 0 ? (
-                            <tr><td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>No meetings logged yet.</td></tr>
+                            <tr><td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>No meetings logged yet.</td></tr>
                           ) : filteredCcMeetings.map((log, i) => (
                             <tr key={log.id || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                               <td style={{ padding: '12px 16px', fontWeight: 700, color: '#1B3A5C' }}>{i + 1}</td>
@@ -2835,6 +2837,24 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
                               <td style={{ padding: '12px 16px', color: '#475569' }}>{log.village || log.collective_name}</td>
                               <td style={{ padding: '12px 16px', color: '#475569' }}>{log.staff_email}</td>
                               <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, color: '#2A9D8F' }}>{log.participants_added}</td>
+                              <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                {log.images && log.images.length > 0 ? (
+                                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                    {log.images.map((img: string, idx: number) => (
+                                      <img
+                                        key={idx}
+                                        src={img}
+                                        alt="CC Attachment"
+                                        style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                                        onClick={() => setPreviewImageUrl(img)}
+                                        title="Click to view image"
+                                      />
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span style={{ color: '#94a3b8' }}>—</span>
+                                )}
+                              </td>
                               <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                                 <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                                   <button onClick={() => { setEditingCcLog(log); setIsEditCcLogModalOpen(true); }} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: '4px' }} title="Edit"><Edit size={16} /></button>
@@ -3559,6 +3579,14 @@ function StaffDetailsModal({ onClose, initialTab = 'staff' }: { onClose: () => v
         </div>
       )}
       {editingAttendance && <EditAttendanceModal attendance={editingAttendance} onClose={() => setEditingAttendance(null)} onSave={handleSaveAttendance} />}
+      {previewImageUrl && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', flexDirection: 'column' }} onClick={() => setPreviewImageUrl(null)}>
+          <div style={{ alignSelf: 'flex-end', marginBottom: '10px' }}>
+             <button onClick={() => setPreviewImageUrl(null)} style={{ background: 'white', color: 'black', border: 'none', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'inline-flex' }}><X size={20} /></button>
+          </div>
+          <img src={previewImageUrl} alt="Expanded CC Meeting Attachment" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px' }} onClick={e => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }

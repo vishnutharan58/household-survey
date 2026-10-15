@@ -30,6 +30,8 @@ export default function StaffDashboard() {
   const [loadingCc, setLoadingCc] = useState(false);
   const [selectedCcId, setSelectedCcId] = useState('');
   const [ccFormData, setCcFormData] = useState({ participants_count: '', start_date: '', end_date: '', village: '', custom_village: '' });
+  const [ccImages, setCcImages] = useState<string[]>([]);
+  const [ccUploading, setCcUploading] = useState(false);
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [eventsList, setEventsList] = useState<any[]>([]);
@@ -47,10 +49,54 @@ export default function StaffDashboard() {
   });
   const [eventUploading, setEventUploading] = useState(false);
 
+  // Helper to optimize and convert image to base64 if storage bucket has permission issues
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1200;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
+          } else {
+            resolve(e.target?.result as string);
+          }
+        };
+        img.onerror = () => resolve(e.target?.result as string);
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
+
   const fetchStaffUsers = async () => {
     try {
       const supabase = getSupabase() as any;
-      const { data } = await supabase.from('staff_users').select('*');
+      let { data } = await supabase.from('staff_users').select('*');
+      if (!data || data.length === 0) {
+        const { data: details } = await supabase.from('staff_details').select('id, name').order('name');
+        if (details && details.length > 0) {
+          data = details;
+        }
+      }
       if (data) setStaffUsersList(data);
     } catch (err) {}
   };
@@ -75,7 +121,7 @@ export default function StaffDashboard() {
     const uploadPromises = Array.from(files).map(async (file) => {
       try {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}-${Date.now()}.${fileExt}`;
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
         const filePath = `staff-uploads/${fileName}`;
         
         const { error: uploadError } = await supabase.storage
@@ -90,14 +136,53 @@ export default function StaffDashboard() {
           
         return data.publicUrl;
       } catch (err) {
-        console.warn("Upload failed:", err);
-        return null;
+        console.warn("Storage upload failed, falling back to base64:", err);
+        return await readFileAsBase64(file);
       }
     });
 
     const urls = (await Promise.all(uploadPromises)).filter(Boolean) as string[];
-    setEventFormData(prev => ({ ...prev, images: [...prev.images, ...urls] }));
+    if (urls.length > 0) {
+      setEventFormData(prev => ({ ...prev, images: [...prev.images, ...urls] }));
+    }
     setEventUploading(false);
+  };
+
+  const handleCcImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setCcUploading(true);
+    const supabase = getSupabase() as any;
+    
+    const uploadPromises = Array.from(files).map(async (file) => {
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const filePath = `cc-uploads/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('event-images')
+          .upload(filePath, file);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data } = supabase.storage
+          .from('event-images')
+          .getPublicUrl(filePath);
+          
+        return data.publicUrl;
+      } catch (err) {
+        console.warn("CC storage upload failed, falling back to base64:", err);
+        return await readFileAsBase64(file);
+      }
+    });
+
+    const urls = (await Promise.all(uploadPromises)).filter(Boolean) as string[];
+    if (urls.length > 0) {
+      setCcImages(prev => [...prev, ...urls]);
+    }
+    setCcUploading(false);
   };
 
   const handleSubmitEventReport = async (e: React.FormEvent) => {
@@ -120,8 +205,8 @@ export default function StaffDashboard() {
         
       if (eventError) throw eventError;
 
-      // 2. Insert report
-      const { error } = await supabase.from('event_reports').insert([{
+      // 2. Insert report with resilient fallback if staff_name column is missing in DB
+      const reportPayload: any = {
         event_id: selectedEventId,
         staff_email: user?.email || '',
         achieved_participants: newParticipants,
@@ -129,10 +214,28 @@ export default function StaffDashboard() {
         start_time: eventFormData.start_time || null,
         end_time: eventFormData.end_time || null,
         place: eventFormData.place || null,
-        resource_person: eventFormData.resource_person,
-        staff_name: eventFormData.staff_name,
-        images: eventFormData.images
-      }]);
+        resource_person: eventFormData.resource_person || null,
+        images: eventFormData.images || []
+      };
+
+      if (eventFormData.staff_name) {
+        reportPayload.staff_name = eventFormData.staff_name;
+      }
+
+      let { error } = await supabase.from('event_reports').insert([reportPayload]);
+      
+      // If error is because staff_name column does not exist yet in DB schema
+      if (error && (error.code === 'PGRST204' || error.message?.includes('staff_name'))) {
+        console.warn("staff_name column not found in event_reports, retrying without staff_name column:", error);
+        delete reportPayload.staff_name;
+        if (eventFormData.staff_name && !reportPayload.resource_person?.includes(eventFormData.staff_name)) {
+          reportPayload.resource_person = reportPayload.resource_person 
+            ? `${reportPayload.resource_person} (Staff: ${eventFormData.staff_name})` 
+            : `Staff: ${eventFormData.staff_name}`;
+        }
+        const retryRes = await supabase.from('event_reports').insert([reportPayload]);
+        error = retryRes.error;
+      }
       
       if (error) throw error;
 
@@ -148,15 +251,17 @@ export default function StaffDashboard() {
         })
         .eq('id', selectedEventId);
         
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.warn("Could not update events aggregates:", updateError);
+      }
 
       alert("Event details submitted successfully!");
       setIsEventModalOpen(false);
       setEventFormData({ achieved_participants: '', event_date: '', place: '', start_time: '', end_time: '', resource_person: '', staff_name: '', images: [] });
       setSelectedEventId('');
-    } catch(err) {
+    } catch(err: any) {
       console.error(err);
-      alert("Failed to submit event details");
+      alert(`Failed to submit event details: ${err?.message || 'Error occurred'}`);
     }
   };
 
@@ -213,7 +318,7 @@ export default function StaffDashboard() {
 
       // Log the meeting
       const dateStr = new Date().toISOString().split('T')[0];
-      const { error: logError } = await supabase.from('cc_meetings_log').insert([{
+      const logPayload: any = {
         collective_id: cc.id,
         collective_name: cc.name,
         staff_email: user?.email,
@@ -221,17 +326,29 @@ export default function StaffDashboard() {
         participants_added: participantsAdded,
         start_date: ccFormData.start_date || null,
         end_date: ccFormData.end_date || null,
-        village: (ccFormData.village === 'Others' ? ccFormData.custom_village : ccFormData.village) || null
-      }]);
+        village: (ccFormData.village === 'Others' ? ccFormData.custom_village : ccFormData.village) || null,
+        images: ccImages
+      };
+
+      let { error: logError } = await supabase.from('cc_meetings_log').insert([logPayload]);
+      
+      // Fallback if images column does not exist yet on cc_meetings_log
+      if (logError && (logError.code === 'PGRST204' || logError.message?.includes('images'))) {
+        console.warn("images column not found in cc_meetings_log, retrying without images:", logError);
+        delete logPayload.images;
+        const retry = await supabase.from('cc_meetings_log').insert([logPayload]);
+        logError = retry.error;
+      }
 
       if (logError) throw logError;
       
       alert(`Successfully added to ${cc.name}`);
       setCcFormData({ participants_count: '', start_date: '', end_date: '', village: '', custom_village: '' });
+      setCcImages([]);
       fetchCCs();
-    } catch(e) {
+    } catch(e: any) {
       console.error(e);
-      alert('Error saving CC Meeting');
+      alert(`Error saving CC Meeting: ${e?.message || 'Error occurred'}`);
     }
   };
 
@@ -1586,10 +1703,37 @@ export default function StaffDashboard() {
                     </div>
 
 
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Add Images</label>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'white', padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', border: '1.5px solid #cbd5e1', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                          <Upload size={16} /> Upload Image
+                          <input type="file" multiple accept="image/*" onChange={handleCcImageUpload} style={{ display: 'none' }} />
+                        </label>
+                        {ccUploading && <span style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 600 }}>Uploading...</span>}
+                      </div>
+                      {ccImages.length > 0 && (
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+                          {ccImages.map((url, i) => (
+                            <div key={i} style={{ position: 'relative' }}>
+                              <img src={url} alt="upload" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                              <button
+                                type="button"
+                                onClick={() => setCcImages(prev => prev.filter((_, idx) => idx !== i))}
+                                style={{ position: 'absolute', top: '-6px', right: '-6px', background: 'white', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                   <button 
                     onClick={handleSaveCc} 
                     style={{ 
-                      marginTop: '12px', padding: '14px', background: 'linear-gradient(135deg,#2A9D8F,#1e8779)', color: 'white', 
+                      marginTop: '16px', padding: '14px', background: 'linear-gradient(135deg,#2A9D8F,#1e8779)', color: 'white', 
                       border: 'none', borderRadius: '8px', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(42,157,143,0.3)' 
                     }}
                   >
